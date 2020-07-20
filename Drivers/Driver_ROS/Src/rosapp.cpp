@@ -108,17 +108,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 }
 
 /* Mains functions ----------------------------------------------------------*/
-void PubDemoView()
-{
-	//	viewROS[0] = robotAGV.Value.wheelLeft.cur_pwm;//cur_pwm_Left;
-	//	viewROS[1] = robotAGV.Value.wheelLeft.cur_wheel_angular;//cur_Speed_Left;
-	//	viewROS[2] = robotAGV.Value.wheelLeft.set_wheel_angular;//setpoint_Left;
-	//	//
-	//	viewROS[3] = robotAGV.Value.wheelRight.cur_pwm;//cur_pwm_Right;
-	//	viewROS[4] = robotAGV.Value.wheelRight.cur_wheel_angular;//cur_Speed_Right;
-	//	viewROS[5] = robotAGV.Value.wheelRight.set_wheel_angular;//setpoint_Right;
-}
-
 /**
  * @brief  setup for ROSserial
  * 1. ROS nodehandle Init
@@ -148,6 +137,8 @@ void ROS_Setup(void)
 	odom_broadcaster.init(nh);
 	//Để send Tf đến ROS
 	//odom_broadcaster.sendTransform(tfStamp);
+
+
 
 }
 /**
@@ -267,7 +258,6 @@ void pub_tf()
 				self.frame_id \
 	) */
 	//since all odometry is 6DOF we'll need a quaternion created from yaw
-	//geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(0.0);
 	double x = 2.0, y = 3.0, theta = 0.1;
 	geometry_msgs::Quaternion odom_quat = YawToQuaternion(theta);
 	//first, we'll publish the transform over tf
@@ -283,39 +273,16 @@ void pub_tf()
 	//send the transform
 	odom_broadcaster.sendTransform(odom_trans);
 }
+/* Odometry Functions ----------------------------------------------*/
 void OdomPublisher()
 {
 	//ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
-	//self.odom_pub = rospy.Publisher('odom', Odometry, queue_size=10)
-	//self.tf_broadcaster = tf.TransformBroadcaster()
-
-	//0.self.update() : Bao gồm 02 thành phần, Odometry và TF
-	// 0.1 : self.pub_odometry(self.pose)
-	// 0.2 : self.pub_tf(self.pose)
+	//ref: ref http://moorerobots.com/blog/post/5?fbclid=IwAR1qnJ5xJERBM6K_v51F8yDjFIzCXEAbo71GJ6sNwJ-OquP3gmXfPHQD8L8
+	//* self.update() : Bao gồm 02 thành phần, Odometry và TF
+	// 1. : self.pub_odometry(self.pose)
+	// 2. : self.pub_tf(self.pose)
 	pub_odometry();
 	pub_tf();
-}
-/* Odometry Functions ----------------------------------------------*/
-void odometry_pub()
-{
-	// ref http://moorerobots.com/blog/post/5?fbclid=IwAR1qnJ5xJERBM6K_v51F8yDjFIzCXEAbo71GJ6sNwJ-OquP3gmXfPHQD8L8
-	geometry_msgs::TransformStamped tfStamp;
-
-	tfStamp.header.frame_id = "/odom";
-	tfStamp.child_frame_id = "/base_link";
-
-	tfStamp.transform.translation.x = 0; //my_car_pos.x;
-	tfStamp.transform.translation.y = 0;//my_car_pos.y;
-	tfStamp.transform.translation.z = 0;
-
-	tfStamp.transform.rotation.x = 0; //my_car_quaternion.x;
-	tfStamp.transform.rotation.y = 0; //my_car_quaternion.y;
-	tfStamp.transform.rotation.z = 0; //my_car_quaternion.z;
-	tfStamp.transform.rotation.w = 0; //my_car_quaternion.w;
-
-	tfStamp.header.stamp = nh.now();
-
-	//broadcaster.sendTransform(tfStamp);
 }
 /* CallBack Functions ----------------------------------------------*/
 /**
