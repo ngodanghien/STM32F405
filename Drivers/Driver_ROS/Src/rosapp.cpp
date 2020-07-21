@@ -145,7 +145,7 @@ void ROS_Loop(void)
 	// Handle all communications and callbacks.
 	nh.spinOnce();	//Luôn được gọi liên tục để phục vụ ROSserial (bao gồm nhận Subcrible)
 	// Publisher Only : Chỉ có truyền lên PC (Publisher)
-	if (nCountTickROS >= 50) { nCountTickROS = 0; //reset // 20 Hz = 1/20 = 50ms
+	if (nCountTickROS >= 100) { nCountTickROS = 0; //reset // 20 Hz = 1/20 = 50ms
 	//Code Here !
 
 	// Publish message to be transmitted.
@@ -199,16 +199,16 @@ void pub_odometry()
 	//nav_msgs::Odometry odom;
 
 	odom.header.stamp = nh.now();
-	odom.header.frame_id = "/odom";
+	odom.header.frame_id = "odom";	//ko được bỏ dấu /
 	//set the position
-	odom.pose.pose.position.x = 0;//x;
-	odom.pose.pose.position.y = 0;//y;
+	odom.pose.pose.position.x = 1.0;//x;
+	odom.pose.pose.position.y = 2.0;//y;
 	odom.pose.pose.position.z = 0.0;
 	odom.pose.pose.orientation = YawToQuaternion(1.0);
 	//set the velocity
 	odom.child_frame_id = "base_link";
-	odom.twist.twist.linear.x = 0;//vx;
-	odom.twist.twist.linear.y = 0;//vy;
+	odom.twist.twist.linear.x = 3.0;//vx;
+	odom.twist.twist.linear.y = 4.0;//vy;
 	odom.twist.twist.angular.z = 0;//vth;
 	//publish the message
 	pub_odom.publish(&odom);
@@ -244,7 +244,7 @@ void OdomPublisher()
 	// 1. : self.pub_odometry(self.pose)
 	// 2. : self.pub_tf(self.pose)
 	pub_odometry();
-	//pub_tf();
+	//pub_tf();	//Hết 3.9mS với 101 byte tất cả.
 }
 /* CallBack Functions ----------------------------------------------*/
 /**
