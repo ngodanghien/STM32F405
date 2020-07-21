@@ -41,10 +41,11 @@
 //#include "geometry_msgs/QuaternionStamped.h"
 //#include "geometry_msgs/TransformStamped.h"
 //#include "geometry_msgs/PoseStamped.h"
+#include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/Twist.h"
 
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
-
 #include <nav_msgs/Odometry.h>
 
 #include <sensor_msgs/Imu.h>
@@ -63,38 +64,27 @@ extern ROBOT_HandleTypeDef robotAGV;
 /* ROS variables -------------------------------------------------------------*/
 ros::NodeHandle nh;			// ROS nodehandle
 
-//std_msgs::Float32 lwheel_angular_vel;
-//std_msgs::Float32 rwheel_angular_vel;
-//
-//ros::Publisher odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 50);
+/* ROS function prototypes Callback -------------------------------------------*/
+void sub__cmd_vel__callback(const geometry_msgs::Twist &msg);
 
-sensor_msgs::Imu imu;
-nav_msgs::Odometry odom_pub;
+/* ROS Publisher variables ---------------------------------------------------*/
+std_msgs::Float32 rwheel_angular_vel;
+ros::Publisher rpub_wheel_angular_vel_enc("rwheel_angular_vel_enc", &rwheel_angular_vel);
 
+nav_msgs::Odometry odom;
+ros::Publisher pub_odom("odom",&odom); //topic_name + Messenger
 
 tf::TransformBroadcaster odom_broadcaster;
 
-/* ROS function prototypes Callback -------------------------------------------*/
-void sub__cmd_vel__callback(const geometry_msgs::Twist &msg);
-geometry_msgs::Quaternion YawToQuaternion(double yaw);
-void OdomPublisher();
-//void odometry_pub();
-/* ROS Publisher variables ---------------------------------------------------*/
-//ros::Publisher lpub_wheel_angular_vel_enc("lwheel_angular_vel_enc", &lwheel_angular_vel);
-//ros::Publisher rpub_wheel_angular_vel_enc("rwheel_angular_vel_enc", &rwheel_angular_vel);
-
-ros::Publisher pub_imu("imu", &imu);
-ros::Publisher pub_odom("odom",&odom_pub); //topic_name + Messenger
-
-std_msgs::Float32MultiArray	para; //demo
-float viewROS[6] = {0};	//demo
-//
-ros::Publisher pubRobotPara("robotAGVpara",&para);
+//sensor_msgs::Imu imu;
+//ros::Publisher pub_imu("imu", &imu);
 
 /* ROS Subscriber variables ---------------------------------------------------*/
 ros::Subscriber<geometry_msgs::Twist> sub__cmd_vel("cmd_vel", &sub__cmd_vel__callback);
 
 /* Private function prototypes -----------------------------------------------*/
+geometry_msgs::Quaternion YawToQuaternion(double yaw);
+void OdomPublisher();
 /* External variables --------------------------------------------------------*/
 /* HAL_UART functions --------------------------------------------------------*/
 //[PASSED] : Đã Test với Raspi3B+ ở các tốc độ: 115200; 256000;	OK
@@ -124,8 +114,11 @@ void ROS_Setup(void)
 
 	/* Register a new publisher */
 	//	nh.advertise(lpub_wheel_angular_vel_enc);
-	//	nh.advertise(rpub_wheel_angular_vel_enc);
+	//nh.advertise(rpub_wheel_angular_vel_enc);
 	nh.advertise(pub_odom);
+
+	//ros::Publisher pub_odom(topic_name, msg, endpoint);
+	//nh.advertise(p)
 	//nh.loginfo("[MCU] Advertise OK-----------");
 
 	/* Register a new subscriber */
@@ -134,7 +127,7 @@ void ROS_Setup(void)
 	nh.subscribe(sub__cmd_vel);
 
 	/************  broadcast tf  *************/
-	odom_broadcaster.init(nh);
+	odom_broadcaster.init(nh);	//bắt buộc phải init trước khi sử dụng
 	//Để send Tf đến ROS
 	//odom_broadcaster.sendTransform(tfStamp);
 
@@ -148,7 +141,7 @@ void ROS_Setup(void)
  */
 void ROS_Loop(void)
 {
-	static int nNumCountPubs = 0;
+	//static int nNumCountPubs = 0;
 	// Handle all communications and callbacks.
 	nh.spinOnce();	//Luôn được gọi liên tục để phục vụ ROSserial (bao gồm nhận Subcrible)
 	// Publisher Only : Chỉ có truyền lên PC (Publisher)
@@ -177,63 +170,36 @@ void ROS_Loop(void)
 	//GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
 
 	//New code !! Chia thành các lần truyền ...
-	switch(nNumCountPubs)
-	{
-	case 0:
-		//broadcaster.sendTransform(tfStamp);
-		//odometry_pub();
-		OdomPublisher();
-		nNumCountPubs++;
-		break;
-	case 1:
-		//anything - Final
-		nNumCountPubs = 0; //reset
-		break;
-	}
+//	switch(nNumCountPubs)
+//	{
+//	case 0:
+//		//broadcaster.sendTransform(tfStamp);
+//		//odometry_pub();
+//		OdomPublisher();
+//		//rpub_wheel_angular_vel_enc.publish(&rwheel_angular_vel);
+//		nNumCountPubs++;
+//		break;
+//	case 1:
+//		//anything - Final
+//		nNumCountPubs = 0; //reset
+//		break;
+//	}
+	OdomPublisher();
 	}
 }
 void pub_odometry()
 {
-	//ref: D:\STUDY\DeCuong-LVThS-NEW\ROS Pi3B\Home\src\slam_robot\src\my_slam_robot_diff_odom\diffdrive_odom.py
-	//	 odom_msg = Odometry()
-	//	    odom_msg.header.stamp = self.time_prev_update
-	//	    odom_msg.header.frame_id = self.frame_id
-	//	    odom_msg.child_frame_id = self.child_frame_id
-	//	    odom_msg.pose.pose.position = Point(pose['x'], pose['y'], 0)
-	//	    odom_msg.pose.pose.orientation = Quaternion(*tf.transformations.quaternion_from_euler(0,0,pose['th']))
-	//	#    P = numpy.mat(numpy.diag([0.0]*3)) # Dummy covariance
-	//	#    odom_msg.pose.covariance = tuple(P.ravel().tolist())
-	//	    # odom.pose.covariance[0]  = 0.01;
-	//	    # odom.pose.covariance[7]  = 0.01;
-	//	    # odom.pose.covariance[14] = 99999;
-	//	    # odom.pose.covariance[21] = 99999;
-	//	    # odom.pose.covariance[28] = 99999;
-	//	    # odom.pose.covariance[35] = 0.01;
-	//
-	//	    # odom.child_frame_id = "base_footprint";
-	//	    # odom.twist.twist.linear.x = vx;
-	//	    # odom.twist.twist.linear.y = 0;
-	//	    # odom.twist.twist.angular.z = w;
-	//	    # odom.twist.covariance = odom.pose.covariance;
-	//	    self.odom_pub.publish(odom_msg)
-
-	//compute odometry in a typical way given the velocities of the robot
-	//since all odometry is 6DOF we'll need a quaternion created from yaw
-	//	double x,y,theta;
-	//	x = 0; y =0;; theta =0;
-	//geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(theta);
-
 	//ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
 
-	geometry_msgs::Point pose;
-	pose.x = 2.0;
-	pose.y = 3.0;
-	pose.z = 1;
+	//	geometry_msgs::Point pose;
+	//	pose.x = 2.0;
+	//	pose.y = 3.0;
+	//	pose.z = 1;
 	//next, we'll publish the odometry message over ROS
-	nav_msgs::Odometry odom;
+	//nav_msgs::Odometry odom;
 
 	odom.header.stamp = nh.now();
-	odom.header.frame_id = "odom";
+	odom.header.frame_id = "/odom";
 	//set the position
 	odom.pose.pose.position.x = 0;//x;
 	odom.pose.pose.position.y = 0;//y;
@@ -245,18 +211,14 @@ void pub_odometry()
 	odom.twist.twist.linear.y = 0;//vy;
 	odom.twist.twist.angular.z = 0;//vth;
 	//publish the message
-	//odom_pub.publish(&odom);
+	pub_odom.publish(&odom);
 
 }
-void pub_tf()
+/*
+ * TF Tree xuất hiện: odom -> base_link
+ */
+void pub_tf()		// = OK
 {
-	/*	self.tf_broadcaster.sendTransform( \
-				(pose['x'], pose['y'], 0), \
-				tf.transformations.quaternion_from_euler(0,0,pose['th']), \
-				self.time_prev_update, \
-				self.child_frame_id, \
-				self.frame_id \
-	) */
 	//since all odometry is 6DOF we'll need a quaternion created from yaw
 	double x = 2.0, y = 3.0, theta = 0.1;
 	geometry_msgs::Quaternion odom_quat = YawToQuaternion(theta);
@@ -282,7 +244,7 @@ void OdomPublisher()
 	// 1. : self.pub_odometry(self.pose)
 	// 2. : self.pub_tf(self.pose)
 	pub_odometry();
-	pub_tf();
+	//pub_tf();
 }
 /* CallBack Functions ----------------------------------------------*/
 /**
