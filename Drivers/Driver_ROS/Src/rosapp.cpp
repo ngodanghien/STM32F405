@@ -85,6 +85,9 @@ ros::Subscriber<geometry_msgs::Twist> sub__cmd_vel("cmd_vel", &sub__cmd_vel__cal
 /* Private function prototypes -----------------------------------------------*/
 geometry_msgs::Quaternion YawToQuaternion(double yaw);
 void OdomPublisher();
+void pub_tf();
+void pub_odometry();
+
 /* External variables --------------------------------------------------------*/
 /* HAL_UART functions --------------------------------------------------------*/
 //[PASSED] : Đã Test với Raspi3B+ ở các tốc độ: 115200; 256000;	OK
@@ -141,50 +144,28 @@ void ROS_Setup(void)
  */
 void ROS_Loop(void)
 {
-	//static int nNumCountPubs = 0;
+	static int nNumCountPubs = 0;
 	// Handle all communications and callbacks.
 	nh.spinOnce();	//Luôn được gọi liên tục để phục vụ ROSserial (bao gồm nhận Subcrible)
 	// Publisher Only : Chỉ có truyền lên PC (Publisher)
-	if (nCountTickROS >= 100) { nCountTickROS = 0; //reset // 20 Hz = 1/20 = 50ms
+	if (nCountTickROS >= 40) { nCountTickROS = 0; //reset // 20 Hz = 1/20 = 50ms
 	//Code Here !
-
-	// Publish message to be transmitted.
-	//	if (nNumCountPubs++ == 0)
-	//	{
-	//		lwheel_angular_vel.data = (float)robotAGV.Value.wheelLeft.cur_wheel_velocity;
-	//		lpub_wheel_angular_vel_enc.publish(&lwheel_angular_vel);
-	//	}
-	//	else
-	//	{
-	//		nNumCountPubs = 0; //reset
-	//		rwheel_angular_vel.data = (float)robotAGV.Value.wheelRight.cur_wheel_velocity;
-	//		rpub_wheel_angular_vel_enc.publish(&rwheel_angular_vel);
-	//	}
-	//  	  para.layout.data_offset = 0;
-	//  	  para.layout.dim->stride = 123;
-	//Update thông tin lên cho ROS xem (xem sự thay đổi khi thay đổi tốc độ)
-	//PubDemoView();
-	//
-	//pubRobotPara.publish(&para);
-	//
 	//GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
 
 	//New code !! Chia thành các lần truyền ...
-//	switch(nNumCountPubs)
-//	{
-//	case 0:
-//		//broadcaster.sendTransform(tfStamp);
-//		//odometry_pub();
-//		OdomPublisher();
-//		//rpub_wheel_angular_vel_enc.publish(&rwheel_angular_vel);
-//		nNumCountPubs++;
-//		break;
-//	case 1:
-//		//anything - Final
-//		nNumCountPubs = 0; //reset
-//		break;
-//	}
-	OdomPublisher();
+	switch(nNumCountPubs)
+	{
+	case 0:
+		pub_odometry();
+		nNumCountPubs++;
+		break;
+	case 1:
+		//anything - Final
+		pub_tf();
+		nNumCountPubs = 0; //reset
+		break;
+	}
+//	OdomPublisher();
 	}
 }
 void pub_odometry()
@@ -243,8 +224,8 @@ void OdomPublisher()
 	//* self.update() : Bao gồm 02 thành phần, Odometry và TF
 	// 1. : self.pub_odometry(self.pose)
 	// 2. : self.pub_tf(self.pose)
-	pub_odometry();
-	//pub_tf();	//Hết 3.9mS với 101 byte tất cả.
+	pub_odometry();	// Hết 28.2mS với 722 bytes tất cả.
+	//pub_tf();		// Hết 	3.9mS với 101 bytes tất cả.
 }
 /* CallBack Functions ----------------------------------------------*/
 /**
