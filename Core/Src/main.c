@@ -147,7 +147,8 @@ int main(void)
 	/* USER CODE BEGIN 2 */
 
 	// --- For Motor DC --------------
-	if (ROBOT_Init(&robotAGV) != DRV_OK) Error_DriverHandler();
+	if (ROBOT_Init(&robotAGV) != DRV_OK)
+		Error_DriverHandler();
 	ROBOT_CONTROL_PID_Init(&robotAGV);
 
 	//-----For ROS Init ---------------------
@@ -163,29 +164,10 @@ int main(void)
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
-		//loop();
-		//delay_us(1);
 		//GPIOB->ODR ^= USER_LED_Pin;
-		///	 if (nCountTick1ms >= 5)	//5ms = OK
-		///	 {   nCountTick1ms = 0; //reset
-
-		//	  	//UartTransferData();
-		//	  	//double tmp[4] = {123.4,234.5,345.6,567.9};
-		//	  	//UartTX_Double(tmp,1);
-		//	  	//test robot lib
-		////	  	ROBOT_SetSpeed(&robotAGV);
-		////	  	ROBOT_GetSpeed(&robotAGV);
-		//	  	//PID_Contol(&cPID,20.1,20.1);
-		//Read_IMU();
-		//GPIOB->ODR ^= USER_LED_Pin;
-		//	 }
 		//Estimation(&robotAGV);
 		ROS_Loop();
 		ROBOT_CONTROL_PID_Run(&robotAGV);
-
-		//Read_DMP(&Pitch, &Roll, &Yaw, &Gryo_Z);
-		//oled_show();
-
 	}
 	/* USER CODE END 3 */
 }

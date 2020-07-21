@@ -23,40 +23,29 @@
   	  	  	  - Thời gian này tầm 100ms là được (khác với step của hệ thống)./
 	------------------------------------------------------------------------------
  **/
-/* Includes ------------------------------------------------------------------*/
+/* Includes SYS------------------------------------------------------------------*/
+#include "motor.h"
+#include "robot.h"
 #include <math.h>
 #include <ros.h>
-#include <std_msgs/String.h>
-#include <geometry_msgs/Twist.h>
 #include <rosapp.h>
-#include <std_msgs/Float32.h>
-#include <std_msgs/Float32MultiArray.h> //demo
-#include "std_msgs/MultiArrayLayout.h"
-#include "std_msgs/MultiArrayDimension.h"
-#include "std_msgs/Int32MultiArray.h"
 
-//#include <geometry_msgs/Quaternion.h>
-//#include "geometry_msgs/PointStamped.h"
-//#include "geometry_msgs/Vector3Stamped.h"
-//#include "geometry_msgs/QuaternionStamped.h"
-//#include "geometry_msgs/TransformStamped.h"
-//#include "geometry_msgs/PoseStamped.h"
+/* Includes ROS------------------------------------------------------------------*/
+#include <std_msgs/String.h>
+#include <std_msgs/Float32.h>
+
 #include "geometry_msgs/Pose2D.h"
 #include "geometry_msgs/Twist.h"
-//#include <geometry_msgs/Point.h>
 #include "geometry_msgs/Vector3.h"
+#include <geometry_msgs/Twist.h>
 
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
+
 #include <nav_msgs/Odometry.h>
 
 #include <sensor_msgs/Imu.h>
 
-
-
-#include "motor.h"
-#include "robot.h"
-#include "delay.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -103,7 +92,6 @@ void pub_IMU_rpy();
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 	nh.getHardware()->flush();
 }
-
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	nh.getHardware()->reset_rbuf();
 }
@@ -157,43 +145,59 @@ void ROS_Setup(void)
 	HAL_Delay(10);
 }
 /**
- * @brief  loop
+ * @brief  ROS_Loop : Chỉ dùng để truyền lên PC (Publisher)
  * @param  void
  * @retval void
+ * Bắt buộc phải gọi hàm liên tục: nh.spinOnce();
+ * Publisher.bublisher("TopicName",&Msg): Để gửi 01 Msg với Topic == TopicName
+ * nCountTickROS >= 20 ==> 1/20 = 50Hz; max(nNumCountPubs) = 3 => 50Hz/3 = 16.67 Hz (cho 1 bản tin Pub)
  */
 void ROS_Loop(void)
 {
 	static int nNumCountPubs = 0;
 	// Handle all communications and callbacks.
 	nh.spinOnce();	//Luôn được gọi liên tục để phục vụ ROSserial (bao gồm nhận Subcrible)
-	// Publisher Only : Chỉ có truyền lên PC (Publisher)
-	if (nCountTickROS >= 40) { nCountTickROS = 0; //reset , 1/40/2 = 12.5Hz
-	//Code Here !
-	//GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
-
-	//New code !! Chia thành các lần truyền ...
-	switch(nNumCountPubs)
+	// Publisher:
+	if (nCountTickROS >= 20)
 	{
-	case 0:
-		pub_odometry();	// Hết 28.2mS với 722 bytes ở baudrate = 256000bps.
-		nNumCountPubs++;
-		break;
-	case 1:
-		//anything - Final
-		pub_tf();			// Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
-		//HAL_Delay(1);		// Note: Delay sẽ ko có tác dụng ở đây, vì sử dụng DMA để truyền.
-		pub_IMU();			// Hết 12,5mS với 320 Bytes ở baudrate = 256000bps.
-		pub_IMU_rpy();		// Hết 1.24mS với  32 Bytes ở baudrate = 256000bps.
-		nNumCountPubs = 0; 	//reset
-		break;
-	}
-	//	OdomPublisher();
+		nCountTickROS = 0; //reset , 1/40/2 = 12.5Hz
+		//Code Here !
+		//GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
+
+		switch(nNumCountPubs)
+		{
+		case 0:
+			pub_odometry();	// Hết 28.2mS với 722 bytes ở baudrate = 256000bps.
+			nNumCountPubs++;
+			break;
+		case 1:
+			//anything - Final
+			//pub_tf();			// Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
+			//HAL_Delay(1);		// Note: Delay sẽ ko có tác dụng ở đây, vì sử dụng DMA để truyền.
+			pub_IMU();			// Hết 12,5mS với 320 Bytes ở baudrate = 256000bps.
+			//pub_IMU_rpy();		// Hết 1.24mS với  32 Bytes ở baudrate = 256000bps.
+			nNumCountPubs++;// = 0; 	//reset
+			break;
+		case 2:
+			//anything - Final
+			pub_tf();			// Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
+			//HAL_Delay(1);		// Note: Delay sẽ ko có tác dụng ở đây, vì sử dụng DMA để truyền.
+			//pub_IMU();			// Hết 12,5mS với 320 Bytes ở baudrate = 256000bps.
+			pub_IMU_rpy();		// Hết 1.24mS với  32 Bytes ở baudrate = 256000bps.
+			nNumCountPubs = 0; 	//reset
+			break;
+		}
 	}
 }
+/**	Hết 28.2mS với 722 bytes ở baudrate = 256000bps.
+ * @brief  loop
+ * @param  void
+ * @retval void
+ */
 void pub_odometry()
 {
 	//ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
-
+	//ref: ref http://moorerobots.com/blog/post/5?fbclid=IwAR1qnJ5xJERBM6K_v51F8yDjFIzCXEAbo71GJ6sNwJ-OquP3gmXfPHQD8L8
 	//	geometry_msgs::Point pose;
 	//	pose.x = 2.0;
 	//	pose.y = 3.0;
@@ -207,7 +211,7 @@ void pub_odometry()
 	odom.pose.pose.position.x = 1.0;//x;
 	odom.pose.pose.position.y = 2.0;//y;
 	odom.pose.pose.position.z = 0.0;
-	odom.pose.pose.orientation = YawToQuaternion(1.0);
+	odom.pose.pose.orientation = YawToQuaternion(3.14);
 	//set the velocity
 	odom.child_frame_id = "base_link";
 	odom.twist.twist.linear.x = 3.0;//vx;
@@ -217,13 +221,16 @@ void pub_odometry()
 	pub_odom.publish(&odom);
 
 }
-/*
+/* Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
  * TF Tree xuất hiện: odom -> base_link
+ * ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
  */
 void pub_tf()		// = OK
 {
+	//ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
+	//ref: http://wiki.ros.org/tf/Tutorials
 	//since all odometry is 6DOF we'll need a quaternion created from yaw
-	double x = 2.0, y = 3.0, theta = 0.1;
+	double x = 2.0, y = 3.0, theta = 3.14;
 	geometry_msgs::Quaternion odom_quat = YawToQuaternion(theta);
 	//first, we'll publish the transform over tf
 	geometry_msgs::TransformStamped odom_trans;
@@ -238,18 +245,11 @@ void pub_tf()		// = OK
 	//send the transform
 	odom_broadcaster.sendTransform(odom_trans);
 }
-/* Odometry Functions ----------------------------------------------*/
-void OdomPublisher()
-{
-	//ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
-	//ref: ref http://moorerobots.com/blog/post/5?fbclid=IwAR1qnJ5xJERBM6K_v51F8yDjFIzCXEAbo71GJ6sNwJ-OquP3gmXfPHQD8L8
-	//* self.update() : Bao gồm 02 thành phần, Odometry và TF
-	// 1. : self.pub_odometry(self.pose)
-	// 2. : self.pub_tf(self.pose)
-	pub_odometry();	// Hết 28.2mS với 722 bytes tất cả.
-	pub_tf();		// Hết 	3.9mS với 101 bytes tất cả.
-}
-// Hết 12.5mS với 320 Bytes ở baudrate = 256000bps.
+/** Hết 12.5mS với 320 Bytes ở baudrate = 256000bps.
+ * @brief  loop
+ * @param  void
+ * @retval void
+ */
 void pub_IMU()
 {
 	double gyro[3] = {1,2,3}, acc[3] = {4,5,6};
@@ -261,7 +261,11 @@ void pub_IMU()
 	imu.linear_acceleration.z = acc[2];
 	pub_imu.publish(&imu);
 }
-// Hết 1.24mS với 32 Bytes ở baudrate = 256000bps.
+/** Hết 1.24mS với 32 Bytes ở baudrate = 256000bps.
+ * @brief  pub_IMU_rpy
+ * @param  void
+ * @retval void
+ */
 void pub_IMU_rpy()
 {
 	imu_rpy.x = 0.123;
@@ -322,20 +326,16 @@ void sub__cmd_vel__callback(const geometry_msgs::Twist &msg)
 	//5. Thực hiện bộ điều khiển !
 }
 
-//void Note()
-//{
-//	nh.logdebug("Debug Statement");
-//	nh.loginfo("Program info");
-//	nh.logwarn("Warnings.");
-//	nh.logerror("Errors..");
-//	nh.logfatal("Fatalities!");
-//}
-
+/** Không dùng đến các góc: Pitch, Roll
+ * @brief  YawToQuaternion
+ * @param  double yaw
+ * @retval geometry_msgs::Quaternion
+ */
 //geometry_msgs::Quaternion ToQuaternion(double yaw, double pitch, double roll) // yaw (Z), pitch (Y), roll (X)
 geometry_msgs::Quaternion YawToQuaternion(double yaw) // yaw (Z)
 {
 	//ref: //https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-	// Abbreviations for the various angular functions
+	//Abbreviations for the various angular functions
 	double cy = cos(yaw * 0.5);
 	double sy = sin(yaw * 0.5);
 	double cp = 1;//cos(pitch * 0.5);
@@ -351,28 +351,4 @@ geometry_msgs::Quaternion YawToQuaternion(double yaw) // yaw (Z)
 
 	return q;
 }
-//https://en.wikipedia.org/wiki/Conversion_between_quaternions_and_Euler_angles
-//geometry_msgs::Transform::
-//EulerAngles ToEulerAngles(Quaternion q) {
-//    EulerAngles angles;
-//
-//    // roll (x-axis rotation)
-//    double sinr_cosp = 2 * (q.w * q.x + q.y * q.z);
-//    double cosr_cosp = 1 - 2 * (q.x * q.x + q.y * q.y);
-//    angles.roll = std::atan2(sinr_cosp, cosr_cosp);
-//
-//    // pitch (y-axis rotation)
-//    double sinp = 2 * (q.w * q.y - q.z * q.x);
-//    if (std::abs(sinp) >= 1)
-//        angles.pitch = std::copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-//    else
-//        angles.pitch = std::asin(sinp);
-//
-//    // yaw (z-axis rotation)
-//    double siny_cosp = 2 * (q.w * q.z + q.x * q.y);
-//    double cosy_cosp = 1 - 2 * (q.y * q.y + q.z * q.z);
-//    angles.yaw = std::atan2(siny_cosp, cosy_cosp);
-//
-//    return angles;
-//}
 
