@@ -43,6 +43,8 @@
 //#include "geometry_msgs/PoseStamped.h"
 #include "geometry_msgs/Pose2D.h"
 #include "geometry_msgs/Twist.h"
+//#include <geometry_msgs/Point.h>
+#include "geometry_msgs/Vector3.h"
 
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
@@ -54,6 +56,7 @@
 
 #include "motor.h"
 #include "robot.h"
+#include "delay.h"
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -76,8 +79,11 @@ ros::Publisher pub_odom("odom",&odom); //topic_name + Messenger
 
 tf::TransformBroadcaster odom_broadcaster;
 
-//sensor_msgs::Imu imu;
-//ros::Publisher pub_imu("imu", &imu);
+sensor_msgs::Imu imu;
+ros::Publisher pub_imu("imu", &imu);
+
+geometry_msgs::Vector3 imu_rpy;	//store roll|pitch|yaw
+ros::Publisher pub_imu_rpy("imu_rpy", &imu_rpy);
 
 /* ROS Subscriber variables ---------------------------------------------------*/
 ros::Subscriber<geometry_msgs::Twist> sub__cmd_vel("cmd_vel", &sub__cmd_vel__callback);
@@ -87,6 +93,8 @@ geometry_msgs::Quaternion YawToQuaternion(double yaw);
 void OdomPublisher();
 void pub_tf();
 void pub_odometry();
+void pub_IMU();
+void pub_IMU_rpy();
 
 /* External variables --------------------------------------------------------*/
 /* HAL_UART functions --------------------------------------------------------*/
@@ -113,29 +121,40 @@ void ROS_Setup(void)
 {
 	// ROS nodehandle initialization and topic registration
 	/* Start serial, initialize buffers */
-	nh.initNode();
+	nh.initNode();	//ko có TX lên PC
+		nh.loginfo("[MCU] ROS nodehandle initialization and topic registration---------OK");	//~6.4mS
+	HAL_Delay(1);
 
 	/* Register a new publisher */
-	//	nh.advertise(lpub_wheel_angular_vel_enc);
-	//nh.advertise(rpub_wheel_angular_vel_enc);
-	nh.advertise(pub_odom);
+	if (nh.advertise(pub_odom))	//ko có TX lên PC
+	{
+		nh.loginfo("[MCU] ROS registration topic: pub_odom ----------------------------OK");	//~6.4ms
+	}
+	HAL_Delay(10);
 
-	//ros::Publisher pub_odom(topic_name, msg, endpoint);
-	//nh.advertise(p)
-	//nh.loginfo("[MCU] Advertise OK-----------");
+	if (nh.advertise(pub_imu))	//ko có TX lên PC
+	{
+		nh.loginfo("[MCU] ROS registration topic: pub_imu -----------------------------OK");	//~6.4ms
+	}
+	HAL_Delay(10);
+
+	if (nh.advertise(pub_imu_rpy))	//ko có TX lên PC
+	{
+		nh.loginfo("[MCU] ROS registration topic: pub_imu_rpy -------------------------OK");	//~6.4ms
+	}
+	HAL_Delay(10);
 
 	/* Register a new subscriber */
 	// Đối với Subscribe chỉ việc đăng ký callbacks là đủ,
 	// Tốc độ truyền phụ thuộc vào PC gửi xuống (đơn vị Hz)
 	nh.subscribe(sub__cmd_vel);
+	HAL_Delay(100);
 
 	/************  broadcast tf  *************/
 	odom_broadcaster.init(nh);	//bắt buộc phải init trước khi sử dụng
-	//Để send Tf đến ROS
-	//odom_broadcaster.sendTransform(tfStamp);
-
-
-
+	HAL_Delay(10);
+		nh.loginfo("[MCU] ROS registration topic: odom_broadcaster(TF)-----------------OK");	//~6.4ms
+	HAL_Delay(10);
 }
 /**
  * @brief  loop
@@ -148,7 +167,7 @@ void ROS_Loop(void)
 	// Handle all communications and callbacks.
 	nh.spinOnce();	//Luôn được gọi liên tục để phục vụ ROSserial (bao gồm nhận Subcrible)
 	// Publisher Only : Chỉ có truyền lên PC (Publisher)
-	if (nCountTickROS >= 40) { nCountTickROS = 0; //reset // 20 Hz = 1/20 = 50ms
+	if (nCountTickROS >= 40) { nCountTickROS = 0; //reset , 1/40/2 = 12.5Hz
 	//Code Here !
 	//GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
 
@@ -156,16 +175,19 @@ void ROS_Loop(void)
 	switch(nNumCountPubs)
 	{
 	case 0:
-		pub_odometry();
+		pub_odometry();	// Hết 28.2mS với 722 bytes ở baudrate = 256000bps.
 		nNumCountPubs++;
 		break;
 	case 1:
 		//anything - Final
-		pub_tf();
-		nNumCountPubs = 0; //reset
+		pub_tf();			// Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
+		//HAL_Delay(1);		// Note: Delay sẽ ko có tác dụng ở đây, vì sử dụng DMA để truyền.
+		pub_IMU();			// Hết 12,5mS với 320 Bytes ở baudrate = 256000bps.
+		pub_IMU_rpy();		// Hết 1.24mS với  32 Bytes ở baudrate = 256000bps.
+		nNumCountPubs = 0; 	//reset
 		break;
 	}
-//	OdomPublisher();
+	//	OdomPublisher();
 	}
 }
 void pub_odometry()
@@ -225,7 +247,27 @@ void OdomPublisher()
 	// 1. : self.pub_odometry(self.pose)
 	// 2. : self.pub_tf(self.pose)
 	pub_odometry();	// Hết 28.2mS với 722 bytes tất cả.
-	//pub_tf();		// Hết 	3.9mS với 101 bytes tất cả.
+	pub_tf();		// Hết 	3.9mS với 101 bytes tất cả.
+}
+// Hết 12.5mS với 320 Bytes ở baudrate = 256000bps.
+void pub_IMU()
+{
+	double gyro[3] = {1,2,3}, acc[3] = {4,5,6};
+	imu.angular_velocity.x = gyro[0];
+	imu.angular_velocity.y = gyro[1];
+	imu.angular_velocity.z = gyro[2];
+	imu.linear_acceleration.x = acc[0];
+	imu.linear_acceleration.y = acc[1];
+	imu.linear_acceleration.z = acc[2];
+	pub_imu.publish(&imu);
+}
+// Hết 1.24mS với 32 Bytes ở baudrate = 256000bps.
+void pub_IMU_rpy()
+{
+	imu_rpy.x = 0.123;
+	imu_rpy.y = 0.456;
+	imu_rpy.z = 0.789;
+	pub_imu_rpy.publish(&imu_rpy);
 }
 /* CallBack Functions ----------------------------------------------*/
 /**

@@ -84,6 +84,7 @@ void delay_us(uint16_t delay)
 {
 	//delay *= 14; //[OK ] 168/12;
 	delay *= 6;		//Dưới 1us, ở tốc độ này: I2C mềm chạy đúng: 500kHz
+	//*= 6 :
 	while(--delay);
 }
 /******************* (C) COPYRIGHT 2020 hiennd *****END OF FILE****/
