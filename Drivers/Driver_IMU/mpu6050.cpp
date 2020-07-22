@@ -16,8 +16,7 @@
 #include "uart.h"
 
 //extern I2C_HandleTypeDef hi2c2;
-//extern volatile float q0, q1, q2, q3;	// quaternion of sensor frame relative to auxiliary frame
-extern volatile float q[4];
+extern volatile float q0, q1, q2, q3;	// quaternion of sensor frame relative to auxiliary frame
 
 float SelfTest[6];
 float gyroBias[3] = {0, 0, 0}, accelBias[3] = {0, 0, 0}; // Bias corrections for gyro and accelerometer
@@ -599,8 +598,44 @@ void IMU_Setup()
 		mpu.initMPU6050();
 	}
 }
+// Converts a quaternion orientation to ZYX Euler angles
+void Quaternion2Euler()	//qConj = [q(:,1) -q(:,2) -q(:,3) -q(:,4)]; at: function qConj = quaternConj(q)
+{
+//	ref: D:\STUDY\LVTHS_NEW\madgwick_algorithm_matlab\quaternion_library\quatern2euler.m
+//	R(1,1,:) = 2.*q(:,1).^2-1+2.*q(:,2).^2;
 
+//	R(2,1,:) = 2.*(q(:,2).*q(:,3)-q(:,1).*q(:,4));
+//	R(3,1,:) = 2.*(q(:,2).*q(:,4)+q(:,1).*q(:,3));
+//	R(3,2,:) = 2.*(q(:,3).*q(:,4)-q(:,1).*q(:,2));
 
+//	R(1,1,:) = 2.*q(:,1).^2-1+2.*q(:,2).^2;
+//	R(3,3,:) = 2.*q(:,1).^2-1+2.*q(:,4).^2;
+//
+//	phi = atan2(R(3,2,:), R(3,3,:) );
+//	theta = -atan(R(3,1,:) ./ sqrt(1-R(3,1,:).^2) );
+//	psi = atan2(R(2,1,:), R(1,1,:) );
+//
+//	euler = [phi(1,:)' theta(1,:)' psi(1,:)'];	//rad/s
+//	euler = quatern2euler(quaternConj(quaternion)) * (180/pi);
+	//% use conjugate for sensor frame relative to Earth and convert to degrees.
+	double q[4] = {q0, -q1, -q2, -q3};
+	double R11, R21, R31, R32, R33;
+
+	R11 = 2.0*q[0]*q[0] - 1 + 2*q[1]*q[1];
+	R33 = 2.0*q[0]*q[0] - 1 + 2*q[3]*q[3];
+
+	R21 = 2.0*(q[1]*q[2] - q[0]*q[3]);
+	R31 = 2.0*(q[1]*q[3] + q[0]*q[2]);
+	R32 = 2.0*(q[2]*q[3] - q[0]*q[1]);
+
+	float phi 	= atan2(R32,R33);
+	float theta = -atan(R31/sqrt(1-R31*R31));
+	float psi 	= atan2(R21,R11);
+	//ref: https://commons.wikimedia.org/wiki/File:Plane.svg
+	roll 	= phi 	* (180/PI);	//convert to degrees.
+	pitch	= theta * (180/PI);	//convert to degrees.
+	yaw		= psi	* (180/PI);	//convert to degrees.
+}
 void Read_IMU()
 {
 	// If data ready bit set, all data registers have new data
@@ -620,44 +655,27 @@ void Read_IMU()
 		gx = (float)gyroCount[0] * gRes; // get actual gyro value, this depends on scale being set
 		gy = (float)gyroCount[1] * gRes;
 		gz = (float)gyroCount[2] * gRes;
-
-		//		tempCount = mpu.readTempData();  // Read the x/y/z adc values
-		//		temperature = ((float) tempCount) / 340. + 36.53; // Temperature in degrees Centigrade
-
-		//Send Data to Matlab
-		float para[6];
-		para[0] = ax;
-		para[1] = ay;
-		para[2] = az;
-		para[3] = gx;
-		para[4] = gy;
-		para[5] = gz;
-		//send
-		UartTX_Float(para, 6);
-
 	}
-	//	Now = HAL_GetTick(); //micros();
-	//	deltat = ((Now - lastUpdate) / 1000.0f); // set integration time by time elapsed since last filter update
-	//	lastUpdate = Now;
-	//    if(lastUpdate - firstUpdate > 10000000uL) {
-	//      beta = 0.041; // decrease filter gain after stabilized
-	//      zeta = 0.015; // increase gyro bias drift gain after stabilized
-	//    }
-	// Pass gyro rate as rad/s
-	//check time
+	//check time - for Debug
 	GPIOB->ODR |= USER_LED_Pin;
-	//GPIOB->ODR &= ~USER_LED_Pin;
-	//MadgwickAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
-	MahonyAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
-	//GPIOB->ODR |= USER_LED_Pin;
+	GPIOB->ODR &= ~USER_LED_Pin;
+	MadgwickAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
+	//MahonyAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
+	GPIOB->ODR |= USER_LED_Pin;
 	GPIOB->ODR &= ~USER_LED_Pin;
 
-	yaw   = atan2(2.0f * (q[1] * q[2] + q[0] * q[3]), q[0] * q[0] + q[1] * q[1] - q[2] * q[2] - q[3] * q[3]);
-	pitch = -asin(2.0f * (q[1] * q[3] - q[0] * q[2]));
-	roll  = atan2(2.0f * (q[0] * q[1] + q[2] * q[3]), q[0] * 0 - q[1] * q[1] - q[2] * q[2] + q[3] * q[3]);
+	Quaternion2Euler(); //new code
 
-
-	pitch *= 180.0f / PI;
-	yaw   *= 180.0f / PI;
-	roll  *= 180.0f / PI;
+	//Send Data to Matlab
+	float para[9];
+	para[0] = ax;
+	para[1] = ay;
+	para[2] = az;
+	para[3] = gx;
+	para[4] = gy;
+	para[5] = gz;
+	para[6] = roll;
+	para[7] = pitch;
+	para[8] = yaw;
+	UartTX_Float(para, 9);//Maltab
 }

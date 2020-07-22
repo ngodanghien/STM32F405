@@ -20,7 +20,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include "stdio.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "sys.h"
@@ -164,10 +164,15 @@ int main(void)
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
-		//GPIOB->ODR ^= USER_LED_Pin;
-		//Estimation(&robotAGV);
+		if (nCountTick1ms >= 5) {	// 5ms == 200 Hz
+			nCountTick1ms = 0; //reset
+			//GPIOB->ODR ^= USER_LED_Pin;
+			//code here --------------
+			Read_IMU();
+			ROBOT_CONTROL_PID_Run(&robotAGV);
+		}
 		ROS_Loop();
-		ROBOT_CONTROL_PID_Run(&robotAGV);
+		//Estimation(&robotAGV);
 	}
 	/* USER CODE END 3 */
 }

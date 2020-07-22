@@ -170,7 +170,7 @@ void ROS_Loop(void)
 		{
 		case 0:
 			pub_odometry();	// Hết 28.2mS với 722 bytes ở baudrate = 256000bps.
-			GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
+			//GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
 			nNumCountPubs++;
 			//break;
 		case 1:

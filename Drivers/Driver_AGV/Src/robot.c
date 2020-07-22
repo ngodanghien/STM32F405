@@ -165,31 +165,31 @@ void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot)
 {
 	//static float parameter[4] = {0};	//setpoint1,2,speed1,2
 	//0. Tính toán các giá trị chuyển đổi ở đây !
-	if (nCountTick1ms >= 5) { nCountTick1ms = 0; //reset
-		//GPIOB->ODR ^= USER_LED_Pin;
-		//Code Here !
-		//demo toc do
-		//int16_t temp = PulseGeneratorSignalPWM(999,4);
-		//int16_t temp = SinGeneratorSignalPWM(2,1);
-		//1. Lấy tốc độ hiện tại đưa vào bộ điều khiển
-		ROBOT_GetSpeed(hRobot);	//Update Odometry !
-		hRobot->hPID->mLeft.para.getspeed 	= hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
-		hRobot->hPID->mRight.para.getspeed 	= hRobot->Value.wheelRight.cur_wheel_angular; //cur_Speed_Right;
-		hRobot->hPID->mLeft.para.setpoint	= hRobot->Value.wheelLeft.set_wheel_angular;
-		hRobot->hPID->mRight.para.setpoint	= hRobot->Value.wheelRight.set_wheel_angular;
-		//2. Tính toán giá trị PID
-		PID_Run(hRobot->hPID);
-		//Set PWM cho động cơ : Các thông số về tốc độ (v,w) đang được update trong này.../
-		ROBOT_SetPWMtoMotor(hRobot, hRobot->hPID->mLeft.para.pwm, hRobot->hPID->mRight.para.pwm);
+	//if (nCountTick1ms >= 5) { nCountTick1ms = 0; //reset
+	//GPIOB->ODR ^= USER_LED_Pin;
+	//Code Here !
+	//demo toc do
+	//int16_t temp = PulseGeneratorSignalPWM(999,4);
+	//int16_t temp = SinGeneratorSignalPWM(2,1);
+	//1. Lấy tốc độ hiện tại đưa vào bộ điều khiển
+	ROBOT_GetSpeed(hRobot);	//Update Odometry !
+	hRobot->hPID->mLeft.para.getspeed 	= hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
+	hRobot->hPID->mRight.para.getspeed 	= hRobot->Value.wheelRight.cur_wheel_angular; //cur_Speed_Right;
+	hRobot->hPID->mLeft.para.setpoint	= hRobot->Value.wheelLeft.set_wheel_angular;
+	hRobot->hPID->mRight.para.setpoint	= hRobot->Value.wheelRight.set_wheel_angular;
+	//2. Tính toán giá trị PID
+	PID_Run(hRobot->hPID);
+	//Set PWM cho động cơ : Các thông số về tốc độ (v,w) đang được update trong này.../
+	ROBOT_SetPWMtoMotor(hRobot, hRobot->hPID->mLeft.para.pwm, hRobot->hPID->mRight.para.pwm);
 
-		//Send data to PC
-//		parameter[0] = hRobot->Value.wheelLeft.set_wheel_angular;//setpoint_Left;
-//		parameter[1] = hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
-//		parameter[2] = hRobot->Value.wheelRight.set_wheel_angular; //setpoint_Right;
-//		parameter[3] = hRobot->Value.wheelRight.cur_wheel_angular;//cur_Speed_Right;
+	//Send data to PC
+	//		parameter[0] = hRobot->Value.wheelLeft.set_wheel_angular;//setpoint_Left;
+	//		parameter[1] = hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
+	//		parameter[2] = hRobot->Value.wheelRight.set_wheel_angular; //setpoint_Right;
+	//		parameter[3] = hRobot->Value.wheelRight.cur_wheel_angular;//cur_Speed_Right;
 
-		//UartTX_Float(parameter,4);
-	 }
+	//UartTX_Float(parameter,4);
+	//}
 }
 /******************* (C) COPYRIGHT 2020 hiennd *****END OF FILE****/
 
