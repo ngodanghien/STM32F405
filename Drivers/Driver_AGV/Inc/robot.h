@@ -57,12 +57,20 @@ typedef struct
 	ROBOT_ParaViewTypeDef wheelRight;
 
 } ROBOT_InitTypeDef;
+typedef struct
+{
+	//pose
+	double odom_pose[3]; 		//x|y|z=theta
+	double odom_vel [3];		//v | 0 | w
+	//twist
+} ROBOT_InitOdomPoseDef;
 /**
   * @brief  ROBOT handle Structure definition
   */
 typedef struct __ROBOT_HandleTypeDef
 {
 	ROBOT_InitTypeDef              	Value;			/*!<   >*/
+	ROBOT_InitOdomPoseDef			Odom;
 	Motor_HandleTypeDef				*hMotor;		/*!< Motor LEFT + RIGHT  */
 	//CONTROL_HandleTypeDef			*hControl;		/*!< Controller Robot : PID, STR, Fuzzy ...  >*/
 	PID_HandleTypeDef				*hPID;

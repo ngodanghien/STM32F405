@@ -18,6 +18,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "robot.h"
+#include <math.h>
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
@@ -92,14 +93,29 @@ void ROBOT_GetSpeed(ROBOT_HandleTypeDef *hRobot)
 {
 	/* Get Speed from ENC Left + Right */
 	hRobot->GetSpeed(hRobot->hMotor);
+	/* Update Odometry...(trước khi tính toán vận tốc mới) */
+	double v = hRobot->Value.cur_robot_velocity;	//m/s
+	double w = hRobot->Value.cur_robot_angular; 	//rad/s
+	double theta = hRobot->Odom.odom_pose[2];
+	//
+	hRobot->Odom.odom_pose[0] 	+= v*TIME_SAMPE*cos(theta + 0.5*w*TIME_SAMPE);
+	hRobot->Odom.odom_pose[1] 	+= v*TIME_SAMPE*sin(theta + 0.5*w*TIME_SAMPE);
+	hRobot->Odom.odom_pose[2] 	+= w*TIME_SAMPE;
+	//Giới hạn góc quay từ: 0--> 360 độ (quay trái); -0 đến -360 độ (quay phải).
+	if (hRobot->Odom.odom_pose[2] >= PPI) 	hRobot->Odom.odom_pose[2] -= PPI; //PPI=2*PI()
+	if (hRobot->Odom.odom_pose[2] <= -PPI)	hRobot->Odom.odom_pose[2] += PPI;
+	//
+	hRobot->Odom.odom_vel[0]	= v;
+	hRobot->Odom.odom_vel[1]	= 0.0;
+	hRobot->Odom.odom_vel[2]	= w;
+
 	/* Update hRobot */
 //	hRobot->Value.cur_Speed_Left = hRobot->hMotor->mLEFT.para.cur_speed;
 //	hRobot->Value.cur_Speed_Right = hRobot->hMotor->mRIGHT.para.cur_speed;
 	hRobot->Value.wheelLeft.cur_wheel_angular 	= hRobot->hMotor->mLEFT.para.cur_speed;
 	hRobot->Value.wheelRight.cur_wheel_angular 	= hRobot->hMotor->mRIGHT.para.cur_speed;
-	hRobot->Value.wheelLeft.cur_wheel_velocity = hRobot->Value.wheelLeft.cur_wheel_angular*RADIUS_WHEEL;
+	hRobot->Value.wheelLeft.cur_wheel_velocity 	= hRobot->Value.wheelLeft.cur_wheel_angular*RADIUS_WHEEL;
 	hRobot->Value.wheelRight.cur_wheel_velocity = hRobot->Value.wheelRight.cur_wheel_angular*RADIUS_WHEEL;
-
 }
 /**
   * @brief  ROBOT_SetPWMtoMotor		[PASSED]
@@ -147,36 +163,32 @@ void ROBOT_CONTROL_PID_Init(ROBOT_HandleTypeDef *hRobot)
 //int16_t SinGeneratorSignalPWM(uint16_t stepTimeS, uint8_t inverse);//
 void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot)
 {
-	static float parameter[4] = {0};	//setpoint1,2,speed1,2
+	//static float parameter[4] = {0};	//setpoint1,2,speed1,2
 	//0. Tính toán các giá trị chuyển đổi ở đây !
 	if (nCountTick1ms >= 5) { nCountTick1ms = 0; //reset
-		GPIOB->ODR ^= USER_LED_Pin;
+		//GPIOB->ODR ^= USER_LED_Pin;
 		//Code Here !
 		//demo toc do
 		//int16_t temp = PulseGeneratorSignalPWM(999,4);
-//		int16_t temp = SinGeneratorSignalPWM(2,1);
-//		double setpoint = 0.03*temp;
-//		hRobot->Value.setpoint_Left 	= setpoint;
-//		hRobot->Value.setpoint_Right 	= setpoint;
+		//int16_t temp = SinGeneratorSignalPWM(2,1);
 		//1. Lấy tốc độ hiện tại đưa vào bộ điều khiển
-		ROBOT_GetSpeed(hRobot);
+		ROBOT_GetSpeed(hRobot);	//Update Odometry !
 		hRobot->hPID->mLeft.para.getspeed 	= hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
 		hRobot->hPID->mRight.para.getspeed 	= hRobot->Value.wheelRight.cur_wheel_angular; //cur_Speed_Right;
 		hRobot->hPID->mLeft.para.setpoint	= hRobot->Value.wheelLeft.set_wheel_angular;
 		hRobot->hPID->mRight.para.setpoint	= hRobot->Value.wheelRight.set_wheel_angular;
 		//2. Tính toán giá trị PID
 		PID_Run(hRobot->hPID);
-		//Set PWM cho động cơ.
+		//Set PWM cho động cơ : Các thông số về tốc độ (v,w) đang được update trong này.../
 		ROBOT_SetPWMtoMotor(hRobot, hRobot->hPID->mLeft.para.pwm, hRobot->hPID->mRight.para.pwm);
 
 		//Send data to PC
-		parameter[0] = hRobot->Value.wheelLeft.set_wheel_angular;//setpoint_Left;
-		parameter[1] = hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
+//		parameter[0] = hRobot->Value.wheelLeft.set_wheel_angular;//setpoint_Left;
+//		parameter[1] = hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
+//		parameter[2] = hRobot->Value.wheelRight.set_wheel_angular; //setpoint_Right;
+//		parameter[3] = hRobot->Value.wheelRight.cur_wheel_angular;//cur_Speed_Right;
 
-		parameter[2] = hRobot->Value.wheelRight.set_wheel_angular; //setpoint_Right;
-		parameter[3] = hRobot->Value.wheelRight.cur_wheel_angular;//cur_Speed_Right;
-
-		UartTX_Float(parameter,4);
+		//UartTX_Float(parameter,4);
 	 }
 }
 /******************* (C) COPYRIGHT 2020 hiennd *****END OF FILE****/

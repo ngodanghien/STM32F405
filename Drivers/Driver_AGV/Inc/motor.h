@@ -71,6 +71,7 @@ typedef struct __Motor_HandleTypeDef
 /* Exported constants --------------------------------------------------------*/
 /* Exported macro ------------------------------------------------------------*/
 #define PI						3.1415926535897932384626433832795
+#define PPI						6.28318530717959		//2*PI
 #define TIME_SAMPE 				0.005	//S
 #define RADIUS_WHEEL			0.0625 	//Robot wheel radius = 0.125/2 = 0.0625 (m)
 #define D2WHEEL					0.37	//D2W = L = distance 2 wheel = 0.37 (m)

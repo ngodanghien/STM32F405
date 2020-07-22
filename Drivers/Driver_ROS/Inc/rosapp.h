@@ -28,6 +28,15 @@
  /* Exported types ------------------------------------------------------------*/
  /* Exported constants --------------------------------------------------------*/
  /* Exported macro ------------------------------------------------------------*/
+#define WHEEL_RADIUS                    0.033     // meter
+#define wheel_seperation_ 				0.160;
+#define LEFT                            0
+#define RIGHT                           1
+
+#define DEG2RAD(x)                      (x * 0.01745329252)  // *PI/180
+#define RAD2DEG(x)                      (x * 57.2957795131)  // *180/PI
+
+
  /* Exported functions prototypes ---------------------------------------------*/
  void ROS_Setup(void);
  void ROS_Loop(void);

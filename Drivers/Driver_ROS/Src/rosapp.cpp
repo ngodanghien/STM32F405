@@ -66,6 +66,8 @@ ros::Publisher rpub_wheel_angular_vel_enc("rwheel_angular_vel_enc", &rwheel_angu
 nav_msgs::Odometry odom;
 ros::Publisher pub_odom("odom",&odom); //topic_name + Messenger
 
+geometry_msgs::TransformStamped t;
+
 tf::TransformBroadcaster odom_broadcaster;
 
 sensor_msgs::Imu imu;
@@ -158,7 +160,7 @@ void ROS_Loop(void)
 	// Handle all communications and callbacks.
 	nh.spinOnce();	//Luôn được gọi liên tục để phục vụ ROSserial (bao gồm nhận Subcrible)
 	// Publisher:
-	if (nCountTickROS >= 20)
+	if (nCountTickROS >= 40)
 	{
 		nCountTickROS = 0; //reset , 1/40/2 = 12.5Hz
 		//Code Here !
@@ -168,22 +170,23 @@ void ROS_Loop(void)
 		{
 		case 0:
 			pub_odometry();	// Hết 28.2mS với 722 bytes ở baudrate = 256000bps.
+			GPIOB->ODR ^= GPIO_PIN_13; //Toggle LED ROS
 			nNumCountPubs++;
-			break;
+			//break;
 		case 1:
 			//anything - Final
 			//pub_tf();			// Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
 			//HAL_Delay(1);		// Note: Delay sẽ ko có tác dụng ở đây, vì sử dụng DMA để truyền.
-			pub_IMU();			// Hết 12,5mS với 320 Bytes ở baudrate = 256000bps.
+			//pub_IMU();			// Hết 12,5mS với 320 Bytes ở baudrate = 256000bps.
 			//pub_IMU_rpy();		// Hết 1.24mS với  32 Bytes ở baudrate = 256000bps.
 			nNumCountPubs++;// = 0; 	//reset
-			break;
+			//break;
 		case 2:
 			//anything - Final
-			pub_tf();			// Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
+			//pub_tf();			// Hết 	3.9mS với 101 bytes ở baudrate = 256000bps.
 			//HAL_Delay(1);		// Note: Delay sẽ ko có tác dụng ở đây, vì sử dụng DMA để truyền.
 			//pub_IMU();			// Hết 12,5mS với 320 Bytes ở baudrate = 256000bps.
-			pub_IMU_rpy();		// Hết 1.24mS với  32 Bytes ở baudrate = 256000bps.
+			//pub_IMU_rpy();		// Hết 1.24mS với  32 Bytes ở baudrate = 256000bps.
 			nNumCountPubs = 0; 	//reset
 			break;
 		}
@@ -196,27 +199,19 @@ void ROS_Loop(void)
  */
 void pub_odometry()
 {
-	//ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/Odom
-	//ref: ref http://moorerobots.com/blog/post/5?fbclid=IwAR1qnJ5xJERBM6K_v51F8yDjFIzCXEAbo71GJ6sNwJ-OquP3gmXfPHQD8L8
-	//	geometry_msgs::Point pose;
-	//	pose.x = 2.0;
-	//	pose.y = 3.0;
-	//	pose.z = 1;
-	//next, we'll publish the odometry message over ROS
-	//nav_msgs::Odometry odom;
-
 	odom.header.stamp = nh.now();
 	odom.header.frame_id = "odom";	//ko được bỏ dấu /
 	//set the position
-	odom.pose.pose.position.x = 1.0;//x;
-	odom.pose.pose.position.y = 2.0;//y;
+	odom.pose.pose.position.x = robotAGV.Odom.odom_pose[0];
+	odom.pose.pose.position.y = robotAGV.Odom.odom_pose[1];
 	odom.pose.pose.position.z = 0.0;
-	odom.pose.pose.orientation = YawToQuaternion(3.14);
+	//odom.pose.pose.orientation = YawToQuaternion(hRobot->Odom.odom_pose[2]);
+	odom.pose.pose.orientation = tf::createQuaternionFromYaw(robotAGV.Odom.odom_pose[2]);
 	//set the velocity
 	odom.child_frame_id = "base_link";
-	odom.twist.twist.linear.x = 3.0;//vx;
-	odom.twist.twist.linear.y = 4.0;//vy;
-	odom.twist.twist.angular.z = 0;//vth;
+	odom.twist.twist.linear.x 	= robotAGV.Odom.odom_vel[0];//vx;
+	odom.twist.twist.linear.y 	= 0;//robotAGV.Odom.odom_vel[1];//vy=0.0;
+	odom.twist.twist.angular.z 	= robotAGV.Odom.odom_vel[2];//vth;
 	//publish the message
 	pub_odom.publish(&odom);
 
@@ -230,8 +225,8 @@ void pub_tf()		// = OK
 	//ref: http://wiki.ros.org/navigation/Tutorials/RobotSetup/TF
 	//ref: http://wiki.ros.org/tf/Tutorials
 	//since all odometry is 6DOF we'll need a quaternion created from yaw
-	double x = 2.0, y = 3.0, theta = 3.14;
-	geometry_msgs::Quaternion odom_quat = YawToQuaternion(theta);
+	double x = 0.0, y = 0.0, theta = 0.0;
+	//geometry_msgs::Quaternion odom_quat = YawToQuaternion(theta);
 	//first, we'll publish the transform over tf
 	geometry_msgs::TransformStamped odom_trans;
 	odom_trans.header.stamp = nh.now();
@@ -241,7 +236,7 @@ void pub_tf()		// = OK
 	odom_trans.transform.translation.x = x;
 	odom_trans.transform.translation.y = y;
 	odom_trans.transform.translation.z = 0.0;
-	odom_trans.transform.rotation = odom_quat;	//
+	odom_trans.transform.rotation = tf::createQuaternionFromYaw(theta); //yaw
 	//send the transform
 	odom_broadcaster.sendTransform(odom_trans);
 }
