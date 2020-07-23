@@ -20,9 +20,11 @@
 
 //---------------------------------------------------------------------------------------------------
 // Definitions
-
+//sampleFreq 	: Bắt buộc là 200Hz đúng bằng thời gian lấy mẫu (đọc xong) IMU (5ms đọc 1 lần)
+//				: Nếu để khác 200.0f thì đọc góc sẽ không đúng.
+//				: Tuy nhiên Yaw trôi (drift) quá nhanh:~ -2.5 độ/1 phút
 #define sampleFreq	200.0f		// sample frequency in Hz (1/5ms = 200Hz)
-#define betaDef		0.015f		// 2 * proportional gain
+#define betaDef		0.01f		// 2 * proportional gain
 
 //---------------------------------------------------------------------------------------------------
 // Variable definitions

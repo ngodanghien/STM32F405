@@ -657,12 +657,12 @@ void Read_IMU()
 		gz = (float)gyroCount[2] * gRes;
 	}
 	//check time - for Debug
-	GPIOB->ODR |= USER_LED_Pin;
-	GPIOB->ODR &= ~USER_LED_Pin;
+//	GPIOB->ODR |= USER_LED_Pin;
+//	GPIOB->ODR &= ~USER_LED_Pin;
 	MadgwickAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
 	//MahonyAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
-	GPIOB->ODR |= USER_LED_Pin;
-	GPIOB->ODR &= ~USER_LED_Pin;
+//	GPIOB->ODR |= USER_LED_Pin;
+//	GPIOB->ODR &= ~USER_LED_Pin;
 
 	Quaternion2Euler(); //new code
 
