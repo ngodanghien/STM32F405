@@ -101,6 +101,7 @@ Motor_HandleTypeDef motorAGV = {0};
 PID_HandleTypeDef cPID = {0};
 ROBOT_HandleTypeDef robotAGV = {0};
 volatile int16_t nCountTick1ms;
+volatile int16_t nCountTick1msIMU;
 
 /* USER CODE END 0 */
 
@@ -166,11 +167,16 @@ int main(void)
 		/* USER CODE BEGIN 3 */
 		if (nCountTick1ms >= 5) {	// 5ms == 200 Hz
 			nCountTick1ms = 0; //reset
-			//GPIOB->ODR ^= USER_LED_Pin;
+			GPIOB->ODR ^= USER_LED_Pin;
 			//code here --------------
-			Read_IMU();
 			ROBOT_CONTROL_PID_Run(&robotAGV);
 		}
+		//nCountTick1msIMU
+		if (nCountTick1msIMU >= 1) {	// 1ms == 1kHz
+			nCountTick1msIMU = 0; //reset
+			Read_IMU();	//PASSED = Chính xác 1ms Ready data, thời gian load hết 6*2 bytes = 0.6ms
+		}
+		//
 		ROS_Loop();
 		//Estimation(&robotAGV);
 	}

@@ -71,6 +71,7 @@ extern UART_HandleTypeDef huart3;
 /* USER CODE BEGIN EV */
 extern uint16_t nCountTick1ms;
 extern uint16_t nCountTickROS;
+extern uint16_t nCountTick1msIMU;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -197,6 +198,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 	nCountTick1ms++;
 	nCountTickROS++;
+	nCountTick1msIMU++;
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */

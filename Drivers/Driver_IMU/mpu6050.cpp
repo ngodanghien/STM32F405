@@ -20,7 +20,7 @@ extern volatile float q0, q1, q2, q3;	// quaternion of sensor frame relative to 
 
 float SelfTest[6];
 float gyroBias[3] = {0, 0, 0}, accelBias[3] = {0, 0, 0}; // Bias corrections for gyro and accelerometer
-
+float bias_accel[3] = {0,0,0}, bias_gyro[3] = {0,0,0};
 //float q[4] = {1.0f, 0.0f, 0.0f, 0.0f};            // vector to hold quaternion
 //float deltat = 0.0f;                              // integration interval for both filter schemes
 //uint32_t lastUpdate = 0, firstUpdate = 0;         // used to calculate integration interval
@@ -36,8 +36,8 @@ float pitch, yaw, roll;
 float PI = 3.14159265358979323846f;
 
 //
-#define MPU6050_ADDRESS 0xD0	//0x68  // Device address when ADO = 0
-//0x69  // Device address when ADO = 1
+#define MPU6050_ADDRESS 0xD0	//0xD0 = 0x68 << 1 // Device address when ADO = 0
+//0xD2 = 0x69 <<1 when AD0 = 1  // Device address when ADO = 1
 
 // Set initial input parameters
 enum Ascale {
@@ -338,11 +338,12 @@ void MPU6050lib::initMPU6050()
 	// Disable FSYNC and set accelerometer and gyro bandwidth to 44 and 42 Hz, respectively;
 	// DLPF_CFG = bits 2:0 = 010; this sets the sample rate at 1 kHz for both
 	// Maximum delay time is 4.9 ms corresponding to just over 200 Hz sample rate
-	writeByte(MPU6050_ADDRESS, CONFIG, 0x03);
+	writeByte(MPU6050_ADDRESS, CONFIG, 0x01); //0x01 = 1kHz, delay 2ms //0x03);
 
 	// Set sample rate = gyroscope output rate/(1 + SMPLRT_DIV)
-	writeByte(MPU6050_ADDRESS, SMPLRT_DIV, 0x04);  // Use a 200 Hz rate; the same rate set in CONFIG above
+	writeByte(MPU6050_ADDRESS, SMPLRT_DIV, 0x00); // 1kHz//0x04);  // Use a 200 Hz rate; the same rate set in CONFIG above
 
+	//Hiennd: CONFIG = 0x01 && SMPLRT_DIV = 0x00 => Sample = 1kHz, 0,98ms ...
 	// Set gyroscope full scale range
 	// Range selects FS_SEL and AFS_SEL are 0 - 3, so 2-bit values are left-shifted into positions 4:3
 	uint8_t c =  readByte(MPU6050_ADDRESS, GYRO_CONFIG);
@@ -429,7 +430,7 @@ void MPU6050lib::calibrateMPU6050(float * dest1, float * dest2)
 
 	}
 	accel_bias[0] /= (int32_t) packet_count; // Normalize sums to get average count biases
-	accel_bias[1] /= (int32_t) packet_count;
+	accel_bias[1] /= (int32_t) packet_count;	//debug: packet_count = 82
 	accel_bias[2] /= (int32_t) packet_count;
 	gyro_bias[0]  /= (int32_t) packet_count;
 	gyro_bias[1]  /= (int32_t) packet_count;
@@ -586,7 +587,64 @@ uint8_t MPU6050_testConnection(void) {
 		return 1;
 	return 0;
 }
+uint8_t ReadIMU()
+{
+	// If data ready bit set, all data registers have new data
+	if (mpu.readByte(MPU6050_ADDRESS, INT_STATUS) & 0x01)
+	{ // check if data ready interrupt
+		mpu.readAccelData(accelCount);  // Read the x/y/z adc values
+		aRes = mpu.getAres();
 
+		// Now we'll calculate the accleration value into actual g's
+		ax = (float)accelCount[0] * aRes; // get actual g value, this depends on scale being set
+		ay = (float)accelCount[1] * aRes;
+		az = (float)accelCount[2] * aRes;
+
+		mpu.readGyroData(gyroCount);  // Read the x/y/z adc values
+		gRes = mpu.getGres();
+
+		// Calculate the gyro value into actual degrees per second
+		gx = (float)gyroCount[0] * gRes; // get actual gyro value, this depends on scale being set
+		gy = (float)gyroCount[1] * gRes;
+		gz = (float)gyroCount[2] * gRes;
+
+		return 1;
+	}
+	return 0;
+}
+#define SAMPLE_COUNT 30000	//60.000ms = 1p
+void CalcBias()
+{
+	uint32_t nCount = 0;
+	//
+	while(nCount < SAMPLE_COUNT)
+	{
+		if (ReadIMU())	//==0.98425ms cho 1 lần đọc (gửi đến 3 lần, nhận 1)
+		{
+			nCount++;
+			GPIOB->ODR ^= USER_LED_Pin;
+			//
+			bias_accel[0] += ax;
+			bias_accel[1] += ay;
+			bias_accel[2] += az;
+			//
+			bias_gyro[0] += gx;
+			bias_gyro[1] += gy;
+			bias_gyro[2] += gz;
+		}
+	}
+	//
+	bias_accel[0] /= SAMPLE_COUNT;	//ax
+	bias_accel[1] /= SAMPLE_COUNT;	//ay
+	bias_accel[2] /= SAMPLE_COUNT;	//az
+
+	bias_gyro[0] /= SAMPLE_COUNT;
+	bias_gyro[1] /= SAMPLE_COUNT;
+	bias_gyro[2] /= SAMPLE_COUNT;
+	//calc new bias
+	if (bias_accel[2] > 1.0) 		bias_accel[2] = 1 - bias_accel[2];		// +
+	else if (bias_accel[2] < 1.0) 	bias_accel[2] = bias_accel[2] - 1.0; 	// -(-) = + (bias)
+}
 void IMU_Setup()
 {
 	IIC_Init();
@@ -597,26 +655,29 @@ void IMU_Setup()
 		mpu.calibrateMPU6050(gyroBias, accelBias); // Calibrate gyro and accelerometers, load biases in bias registers
 		mpu.initMPU6050();
 	}
+	//calc bias ...
+	HAL_Delay(100);
+	CalcBias();
 }
 // Converts a quaternion orientation to ZYX Euler angles
 void Quaternion2Euler()	//qConj = [q(:,1) -q(:,2) -q(:,3) -q(:,4)]; at: function qConj = quaternConj(q)
 {
-//	ref: D:\STUDY\LVTHS_NEW\madgwick_algorithm_matlab\quaternion_library\quatern2euler.m
-//	R(1,1,:) = 2.*q(:,1).^2-1+2.*q(:,2).^2;
+	//	ref: D:\STUDY\LVTHS_NEW\madgwick_algorithm_matlab\quaternion_library\quatern2euler.m
+	//	R(1,1,:) = 2.*q(:,1).^2-1+2.*q(:,2).^2;
 
-//	R(2,1,:) = 2.*(q(:,2).*q(:,3)-q(:,1).*q(:,4));
-//	R(3,1,:) = 2.*(q(:,2).*q(:,4)+q(:,1).*q(:,3));
-//	R(3,2,:) = 2.*(q(:,3).*q(:,4)-q(:,1).*q(:,2));
+	//	R(2,1,:) = 2.*(q(:,2).*q(:,3)-q(:,1).*q(:,4));
+	//	R(3,1,:) = 2.*(q(:,2).*q(:,4)+q(:,1).*q(:,3));
+	//	R(3,2,:) = 2.*(q(:,3).*q(:,4)-q(:,1).*q(:,2));
 
-//	R(1,1,:) = 2.*q(:,1).^2-1+2.*q(:,2).^2;
-//	R(3,3,:) = 2.*q(:,1).^2-1+2.*q(:,4).^2;
-//
-//	phi = atan2(R(3,2,:), R(3,3,:) );
-//	theta = -atan(R(3,1,:) ./ sqrt(1-R(3,1,:).^2) );
-//	psi = atan2(R(2,1,:), R(1,1,:) );
-//
-//	euler = [phi(1,:)' theta(1,:)' psi(1,:)'];	//rad/s
-//	euler = quatern2euler(quaternConj(quaternion)) * (180/pi);
+	//	R(1,1,:) = 2.*q(:,1).^2-1+2.*q(:,2).^2;
+	//	R(3,3,:) = 2.*q(:,1).^2-1+2.*q(:,4).^2;
+	//
+	//	phi = atan2(R(3,2,:), R(3,3,:) );
+	//	theta = -atan(R(3,1,:) ./ sqrt(1-R(3,1,:).^2) );
+	//	psi = atan2(R(2,1,:), R(1,1,:) );
+	//
+	//	euler = [phi(1,:)' theta(1,:)' psi(1,:)'];	//rad/s
+	//	euler = quatern2euler(quaternConj(quaternion)) * (180/pi);
 	//% use conjugate for sensor frame relative to Earth and convert to degrees.
 	double q[4] = {q0, -q1, -q2, -q3};
 	double R11, R21, R31, R32, R33;
@@ -644,38 +705,45 @@ void Read_IMU()
 		aRes = mpu.getAres();
 
 		// Now we'll calculate the accleration value into actual g's
-		ax = (float)accelCount[0] * aRes; // get actual g value, this depends on scale being set
-		ay = (float)accelCount[1] * aRes;
-		az = (float)accelCount[2] * aRes;
+//		ax = (float)accelCount[0] * aRes; // get actual g value, this depends on scale being set
+//		ay = (float)accelCount[1] * aRes;
+//		az = (float)accelCount[2] * aRes;
+		ax = (float)accelCount[0] * aRes - bias_accel[0];
+		ay = (float)accelCount[1] * aRes - bias_accel[1];
+		az = (float)accelCount[2] * aRes - bias_accel[2];
 
 		mpu.readGyroData(gyroCount);  // Read the x/y/z adc values
 		gRes = mpu.getGres();
 
 		// Calculate the gyro value into actual degrees per second
-		gx = (float)gyroCount[0] * gRes; // get actual gyro value, this depends on scale being set
-		gy = (float)gyroCount[1] * gRes;
-		gz = (float)gyroCount[2] * gRes;
+//		gx = (float)gyroCount[0] * gRes; // get actual gyro value, this depends on scale being set
+//		gy = (float)gyroCount[1] * gRes;
+//		gz = (float)gyroCount[2] * gRes;
+		gx = (float)gyroCount[0] * gRes - bias_gyro[0];
+		gy = (float)gyroCount[1] * gRes - bias_gyro[1];
+		gz = (float)gyroCount[2] * gRes - bias_gyro[2];
+
+		//check time - for Debug
+		//	GPIOB->ODR |= USER_LED_Pin;
+		//	GPIOB->ODR &= ~USER_LED_Pin;
+		MadgwickAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
+		//MahonyAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
+		//	GPIOB->ODR |= USER_LED_Pin;
+		//	GPIOB->ODR &= ~USER_LED_Pin;
+
+		Quaternion2Euler(); //new code
+
+		//Send Data to Matlab
+		float para[9];
+		para[0] = ax;
+		para[1] = ay;
+		para[2] = az;
+		para[3] = gx;
+		para[4] = gy;
+		para[5] = gz;
+		para[6] = roll;
+		para[7] = pitch;
+		para[8] = yaw;
+		UartTX_Float(para, 9);//Maltab
 	}
-	//check time - for Debug
-//	GPIOB->ODR |= USER_LED_Pin;
-//	GPIOB->ODR &= ~USER_LED_Pin;
-	MadgwickAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
-	//MahonyAHRSupdateIMU(gx * PI / 180.0f, gy * PI / 180.0f, gz * PI / 180.0f, ax, ay, az);
-//	GPIOB->ODR |= USER_LED_Pin;
-//	GPIOB->ODR &= ~USER_LED_Pin;
-
-	Quaternion2Euler(); //new code
-
-	//Send Data to Matlab
-	float para[9];
-	para[0] = ax;
-	para[1] = ay;
-	para[2] = az;
-	para[3] = gx;
-	para[4] = gy;
-	para[5] = gz;
-	para[6] = roll;
-	para[7] = pitch;
-	para[8] = yaw;
-	UartTX_Float(para, 9);//Maltab
 }
