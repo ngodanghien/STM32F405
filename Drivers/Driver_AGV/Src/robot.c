@@ -31,6 +31,7 @@ void ROBOT_SetSpeed(ROBOT_HandleTypeDef *hRobot);
 void ROBOT_GetSpeed(ROBOT_HandleTypeDef *hRobot);
 void ROBOT_CONTROL_PID_Init(ROBOT_HandleTypeDef *hRobot);
 void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot);
+void ComputeAngularVelocity(ROBOT_HandleTypeDef *hRobot, double target_v, double target_w);
 /* External variables --------------------------------------------------------*/
 extern int16_t nCountTick1ms;
 extern Motor_HandleTypeDef motorAGV;
@@ -89,10 +90,8 @@ void ROBOT_SetSpeed(ROBOT_HandleTypeDef *hRobot)
 	//Sau khi đã tính toán vận tốc vr,vl
 	ROBOT_SetPWMtoMotor(hRobot, 300, 300); //PASSED
 }
-void ROBOT_GetSpeed(ROBOT_HandleTypeDef *hRobot)
+void ROBOT_GetOdom(ROBOT_HandleTypeDef *hRobot)
 {
-	/* Get Speed from ENC Left + Right */
-	hRobot->GetSpeed(hRobot->hMotor);
 	/* Update Odometry...(trước khi tính toán vận tốc mới) */
 	double v = hRobot->Value.cur_robot_velocity;	//m/s
 	double w = hRobot->Value.cur_robot_angular; 	//rad/s
@@ -109,9 +108,14 @@ void ROBOT_GetSpeed(ROBOT_HandleTypeDef *hRobot)
 	hRobot->Odom.odom_vel[1]	= 0.0;
 	hRobot->Odom.odom_vel[2]	= w;
 
+}
+void ROBOT_GetSpeed(ROBOT_HandleTypeDef *hRobot)
+{
+	/* Get Speed from ENC Left + Right */
+	hRobot->GetSpeed(hRobot->hMotor);
+	//Update Odometry
+	ROBOT_GetOdom(hRobot);
 	/* Update hRobot */
-//	hRobot->Value.cur_Speed_Left = hRobot->hMotor->mLEFT.para.cur_speed;
-//	hRobot->Value.cur_Speed_Right = hRobot->hMotor->mRIGHT.para.cur_speed;
 	hRobot->Value.wheelLeft.cur_wheel_angular 	= hRobot->hMotor->mLEFT.para.cur_speed;
 	hRobot->Value.wheelRight.cur_wheel_angular 	= hRobot->hMotor->mRIGHT.para.cur_speed;
 	hRobot->Value.wheelLeft.cur_wheel_velocity 	= hRobot->Value.wheelLeft.cur_wheel_angular*RADIUS_WHEEL;
@@ -165,13 +169,7 @@ void ROBOT_CONTROL_PID_Init(ROBOT_HandleTypeDef *hRobot)
 void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot)
 {
 	//static float parameter[4] = {0};	//setpoint1,2,speed1,2
-	//0. Tính toán các giá trị chuyển đổi ở đây !
-	//if (nCountTick1ms >= 5) { nCountTick1ms = 0; //reset
-	//GPIOB->ODR ^= USER_LED_Pin;
-	//Code Here !
-	//demo toc do
-	//int16_t temp = PulseGeneratorSignalPWM(999,4);
-	//int16_t temp = SinGeneratorSignalPWM(2,1);
+
 	//1. Lấy tốc độ hiện tại đưa vào bộ điều khiển
 	//GPIOB->ODR ^= USER_LED_Pin; //check xem đúng 5ms step ko?
 	//Để vào đây thì ko chính xác 5ms cho 1 lần đọc Encoder -> cho time7 gọi hàm này.
@@ -193,6 +191,48 @@ void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot)
 
 	//UartTX_Float(parameter,4);
 	//}
+}
+/*  Compute angular velocity target
+	# v = wR
+	# v - tangential velocity (m/s)
+	# w - angular velocity (rad/s)
+	# R - radius of wheel (m)
+	angular_vel = tangent_vel / self.R;
+ */
+void ComputeAngularVelocity(ROBOT_HandleTypeDef *hRobot, double target_v, double target_w)	//robotAGV || m/s || rad/s
+{
+	double vl, vr, wr, wl; 	//vận tốc tính toán cho từng bánh xe trái(l), phải (r)
+	// Check Limit
+	if 		(target_v > MAX_ROBOT_VELOCITY_UP) 		target_v = MAX_ROBOT_VELOCITY_UP;
+	else if (target_v < MAX_ROBOT_VELOCITY_DOWN)	target_v = MAX_ROBOT_VELOCITY_DOWN;
+
+	if 		(target_w > MAX_ROBOT_ANGULAR_UP) 		target_w = MAX_ROBOT_ANGULAR_UP;
+	else if (target_w < MAX_ROBOT_ANGULAR_DOWN)	target_w = MAX_ROBOT_ANGULAR_DOWN;
+
+	/* Convert (linear & angular) of Robot to 2 wheel (ms/s) */
+	//1. Chuyển về tốc độ dài (m/s) của 2 bánh xe trái và phải
+	vr = 0.5*(2.0*target_v + target_w*D2WHEEL); //D2W = L = distance 2 wheel
+	vl = 0.5*(2.0*target_v - target_w*D2WHEEL); //D2W = Khoảng cách giữa 2 bánh xe (m)
+	/* Convert form m/s -> rad/s */
+	//2. Chuyển từ tốc độ m/s của bánh xe về tốc độ góc (rad/s)
+
+	wl = vl/RADIUS_WHEEL;		//WHEEL_RADIUS: Bán kính bánh xe (m)
+	wr = vr/RADIUS_WHEEL; 		//RW: robot wheel radius
+
+	//3. Giới hạn cơ khí của bánh xe (Tốc độ quay maximum)
+	if 		(wl > MAX_RADs_LEFT_UP) 		wl = MAX_RADs_LEFT_UP;
+	else if (wl < MAX_RADs_LEFT_DOWN) 		wl = MAX_RADs_LEFT_DOWN;
+	//
+	if 		(wr > MAX_RADs_RIGHT_UP) 		wr = MAX_RADs_RIGHT_UP;
+	else if (wr < MAX_RADs_RIGHT_DOWN) 		wr = MAX_RADs_RIGHT_DOWN;
+	//4. Cập nhập các giá trị vl,wr đến robot trước khi thực hiện bộ điều khiển PID, STR, Fuzzy ....
+	hRobot->Value.set_robot_velocity 	= target_v;	//view
+	hRobot->Value.set_robot_angular		= target_w;	//view
+	hRobot->Value.wheelLeft.set_wheel_velocity	= vl;
+	hRobot->Value.wheelRight.set_wheel_velocity	= vl;
+	hRobot->Value.wheelLeft.set_wheel_angular 	= wl;	//control wheel (rad/s)
+	hRobot->Value.wheelRight.set_wheel_angular 	= wr;	//control
+	//5. Thực hiện bộ điều khiển !
 }
 /******************* (C) COPYRIGHT 2020 hiennd *****END OF FILE****/
 

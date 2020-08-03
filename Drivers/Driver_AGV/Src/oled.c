@@ -212,7 +212,7 @@ void OLED_Init(void)
 //demo:
 int Encoder_A,Encoder_B; 
 long int Target_A,Target_B;
-float Pitch,Roll,Yaw,Move_X,Move_Y,Move_Z;
+static float Pitch,Roll,Yaw,Move_X,Move_Y,Move_Z;
 int Voltage;    
 u8 Run_Flag=0;  
 

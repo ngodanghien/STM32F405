@@ -32,7 +32,7 @@
 #include "rosapp.h"
 
 #include "mpu6050.h"
-
+#include "test_demo.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -104,8 +104,7 @@ PID_HandleTypeDef cPID = {0};
 ROBOT_HandleTypeDef robotAGV = {0};
 volatile int16_t nCountTick1ms;
 volatile int16_t nCountTick1msIMU;
-//for debug
-static float parameter[3] = {0};	//wLR|wL|wR
+volatile float yaw_imu = 0;
 /* USER CODE END 0 */
 
 /**
@@ -155,12 +154,11 @@ int main(void)
   if (ROBOT_Init(&robotAGV) != DRV_OK)
 	  Error_DriverHandler();
   ROBOT_CONTROL_PID_Init(&robotAGV);
-
-  //Enable Time7 = 5ms
-  if(HAL_TIM_Base_Start_IT(&htim7) != HAL_OK) Error_Handler();
   //-----For ROS Init ---------------------
   ROS_Setup();
   IMU_Setup();
+  //Enable Time7 = 5ms
+  if(HAL_TIM_Base_Start_IT(&htim7) != HAL_OK) Error_Handler();
 
   /* USER CODE END 2 */
 
@@ -170,32 +168,26 @@ int main(void)
 	{
     /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+		/* USER CODE BEGIN 3 */
 		if (nCountTick1ms >= 5) {	// 5ms == 200 Hz
 			nCountTick1ms = 0; //reset
 			//GPIOB->ODR ^= USER_LED_Pin;
 			//code here --------------
-			//ROBOT_CONTROL_PID_Run(&robotAGV); //~0.5uS
-			//for debug
-			float wLR = PulseGeneratorSignalPWM(10.0, 10);
-			robotAGV.Value.wheelLeft.set_wheel_angular = wLR;
-			robotAGV.Value.wheelRight.set_wheel_angular = wLR;
-			//for debug
-
-			parameter[0] = wLR;
-			parameter[1] = robotAGV.Value.wheelLeft.cur_wheel_angular;
-			parameter[2] = robotAGV.Value.wheelRight.cur_wheel_angular;
-			UartTX_Float(parameter,3);
-
+			//for debug (Lựa chọn 1 trong các mode: TEST__xx__yy() )
+			//Test_Set_PWM_For_Estimation(&robotAGV);
+			//Test_Response_Angular_Velocity_Wheel(&robotAGV); //10rad/s + 10s
+			Test_Run_Robot(&robotAGV);	//Đặt tốc độ mong muốn (v,w) của robot
+			Test_Odom_IMU(&robotAGV);
+			//end for debug
 		}
 		//nCountTick1msIMU
 		if (nCountTick1msIMU >= 1) {	// 1ms == 1kHz
 			nCountTick1msIMU = 0; //reset
-			Read_IMU();	//PASSED = Chính xác 1ms Ready data, th�?i gian load hết 6*2 bytes = 0.6ms
+			yaw_imu = Read_IMU();	//PASSED = Chính xác 1ms Ready data, thời gian load hết 6*2 bytes = 0.6ms
 		}
 		//
 		ROS_Loop();
-		//Estimation(&robotAGV);
+		//Estimation(&robotAGV); -> (hàm thay thế):  Test_Set_PWM_For_Estimation(&robotAGV);
 	}
   /* USER CODE END 3 */
 }
@@ -908,8 +900,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	//Để 2 hàm vào đây vẫn đảm bảo chính xác: 5ms 1 lần.
 	//Luôn đảm bảo chính xác: 5ms khi hàm Main() fọi full các functions.
 	GPIOB->ODR ^= USER_LED_Pin;
-	//ROBOT_GetSpeed(&robotAGV);
+	//
 	ROBOT_CONTROL_PID_Run(&robotAGV); //~0.5uS
+	//Đã bao gồm: ROBOT_GetSpeed(&robotAGV); và tính toán v,w cho cả Robot bên trong này.
 }
 /* USER CODE END 4 */
 

@@ -697,7 +697,7 @@ void Quaternion2Euler()	//qConj = [q(:,1) -q(:,2) -q(:,3) -q(:,4)]; at: function
 	pitch	= theta * (180/PI);	//convert to degrees.
 	yaw		= psi	* (180/PI);	//convert to degrees.
 }
-void Read_IMU()
+float Read_IMU()
 {
 	// If data ready bit set, all data registers have new data
 	if (mpu.readByte(MPU6050_ADDRESS, INT_STATUS) & 0x01) { // check if data ready interrupt
@@ -746,4 +746,5 @@ void Read_IMU()
 		para[8] = yaw;
 		//UartTX_Float(para, 9);//Maltab
 	}
+	return yaw;
 }

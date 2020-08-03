@@ -98,6 +98,7 @@ void ROBOT_GetSpeed(ROBOT_HandleTypeDef *hRobot);
 void ROBOT_SetPWMtoMotor(ROBOT_HandleTypeDef *hRobot, int16_t pwmLeft, int16_t pwmRight);
 void ROBOT_CONTROL_PID_Init(ROBOT_HandleTypeDef *hRobot);
 void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot);
+void ComputeAngularVelocity(ROBOT_HandleTypeDef *hRobot, double target_v, double target_w);
 /* Private defines -----------------------------------------------------------*/
 
 /* Initialization and de-initialization functions ----------------------------*/
