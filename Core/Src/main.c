@@ -160,7 +160,7 @@ int main(void)
   if(HAL_TIM_Base_Start_IT(&htim7) != HAL_OK) Error_Handler();
   //-----For ROS Init ---------------------
   ROS_Setup();
-  //IMU_Setup();
+  IMU_Setup();
 
   /* USER CODE END 2 */
 
@@ -175,7 +175,7 @@ int main(void)
 			nCountTick1ms = 0; //reset
 			//GPIOB->ODR ^= USER_LED_Pin;
 			//code here --------------
-			ROBOT_CONTROL_PID_Run(&robotAGV);
+			//ROBOT_CONTROL_PID_Run(&robotAGV); //~0.5uS
 			//for debug
 			float wLR = PulseGeneratorSignalPWM(10.0, 10);
 			robotAGV.Value.wheelLeft.set_wheel_angular = wLR;
@@ -902,11 +902,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+//[TIM-RUN]: 5ms/
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	//BSP_LED_Toggle(LED4);
+	//Để 2 hàm vào đây vẫn đảm bảo chính xác: 5ms 1 lần.
+	//Luôn đảm bảo chính xác: 5ms khi hàm Main() fọi full các functions.
 	GPIOB->ODR ^= USER_LED_Pin;
-	ROBOT_GetSpeed(&robotAGV);
+	//ROBOT_GetSpeed(&robotAGV);
+	ROBOT_CONTROL_PID_Run(&robotAGV); //~0.5uS
 }
 /* USER CODE END 4 */
 

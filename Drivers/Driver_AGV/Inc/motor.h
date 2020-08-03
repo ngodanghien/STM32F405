@@ -78,11 +78,15 @@ typedef struct __Motor_HandleTypeDef
 #define MAX_PWM					999
 
 /* Giá trị được TEST lúc pin xạc đầy, ngày 23/06/2020 */
-#define MAX_RADs_LEFT_UP		39.0
-#define MAX_RADs_LEFT_DOWN		-39.5
-#define MAX_RADs_RIGHT_UP		38.0
-#define MAX_RADs_RIGHT_DOWN		-40.5
-
+#define MAX_RADs_LEFT_UP			39.0
+#define MAX_RADs_LEFT_DOWN			-39.5
+#define MAX_RADs_RIGHT_UP			38.0
+#define MAX_RADs_RIGHT_DOWN			-40.5
+//Đã khai báo bên: robot.h --> để đây xem cho tiện.
+//#define MAX_ROBOT_VELOCITY_UP		2.4		// m/s
+//#define MAX_ROBOT_VELOCITY_DOWN	-2.4	// m/s
+//#define MAX_ROBOT_ANGULAR_UP 		13.6	// rad/s
+//#define MAX_ROBOT_ANGULAR_DOWN	-13.6	// rad/s
 /* Exported functions prototypes ---------------------------------------------*/
 void Motor_Init(Motor_HandleTypeDef *hMotor);
 void MOTOR_SetPWM(Motor_HandleTypeDef *hMotor);

@@ -43,7 +43,7 @@ void Estimation(ROBOT_HandleTypeDef *hRobot)
 	//2. Gửi toàn bộ data lên PC theo stt (float32) = pwm,speed,speed
 	static float parameter[3] = {0};	//pwm,speed,speed
 	static int16_t pwm = 0;
-	static int timeSendWiFi = 0;
+	//static int timeSendWiFi = 0;
 	//
 	if (nCountTick1ms >= 5)
 	{
@@ -51,10 +51,11 @@ void Estimation(ROBOT_HandleTypeDef *hRobot)
 
 		// ----Code here (5ms)
 		//pwm = SinGeneratorSignalPWM(1,1);
-		pwm = PulseGeneratorSignalPWM(max_pwm_duty,time_duty);	//900|2
-		//
-		//pwm = max_pwm_duty;
-		ROBOT_GetSpeed(hRobot);
+		//pwm = PulseGeneratorSignalPWM(max_pwm_duty,time_duty);	//900|2
+		// Nếu chỉ sử dụng mỗi Estimation() thì thời gian trong này chính xác: 5ms
+		//GPIOB->ODR ^= USER_LED_Pin; //LED = PB13 (Toggle)
+		pwm = max_pwm_duty;
+		//ROBOT_GetSpeed(hRobot);	//TIM7 lam viec nay roi !
 		ROBOT_SetPWMtoMotor(hRobot, pwm, pwm); //
 		//
 		parameter[0] = pwm;
@@ -63,7 +64,6 @@ void Estimation(ROBOT_HandleTypeDef *hRobot)
 		//
 		UartTX_Float(parameter,3);
 		//
-		//GPIOB->ODR ^= USER_LED_Pin; //LED = PB13 (Toggle)
 		//using WiFi ..... !!!
 		/*
 		if (++timeSendWiFi >= 10)	//20*5 ==== 100ms = OK [PASSED]

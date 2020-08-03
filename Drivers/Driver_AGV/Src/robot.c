@@ -161,6 +161,7 @@ void ROBOT_CONTROL_PID_Init(ROBOT_HandleTypeDef *hRobot)
 
 //int16_t PulseGeneratorSignalPWM(int16_t maxPulse, uint16_t periodTimeSecond); //demo
 //int16_t SinGeneratorSignalPWM(uint16_t stepTimeS, uint8_t inverse);//
+//[TIME-RUN]: 0.5uS
 void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot)
 {
 	//static float parameter[4] = {0};	//setpoint1,2,speed1,2
@@ -174,7 +175,7 @@ void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot)
 	//1. Lấy tốc độ hiện tại đưa vào bộ điều khiển
 	//GPIOB->ODR ^= USER_LED_Pin; //check xem đúng 5ms step ko?
 	//Để vào đây thì ko chính xác 5ms cho 1 lần đọc Encoder -> cho time7 gọi hàm này.
-	//ROBOT_GetSpeed(hRobot);	//Update Odometry !
+	ROBOT_GetSpeed(hRobot);	//Update Odometry !
 	hRobot->hPID->mLeft.para.getspeed 	= hRobot->Value.wheelLeft.cur_wheel_angular; //cur_Speed_Left;
 	hRobot->hPID->mRight.para.getspeed 	= hRobot->Value.wheelRight.cur_wheel_angular; //cur_Speed_Right;
 	hRobot->hPID->mLeft.para.setpoint	= hRobot->Value.wheelLeft.set_wheel_angular;
