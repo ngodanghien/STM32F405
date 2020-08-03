@@ -52,7 +52,8 @@ void UartTX_Float(const float *arrTx, int lengthF)
 	*((uint32_t*)txBuffFload + lengthF) = 0x00000A0D;
 	//3. Send Tx buffer
 	//HAL_UART_DMAStop(_huart);
-	HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txBuffFload,length);	//OK = UART
+	//HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txBuffFload,length);	//OK = UART
+	HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txBuffFload,length-1); //end = '\r'
 }
 /**
   * @brief  UartTX_Double

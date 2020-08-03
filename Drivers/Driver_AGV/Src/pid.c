@@ -33,9 +33,9 @@ extern PID_HandleTypeDef cPID;
 void PID_GainInit(PID_HandleTypeDef *pid)
 {
 	//MotorLEFT									//  Rise time	: 0.46s
-	pid->mLeft.gain.Kp = 7.91171858465162; //4.38148531613524; 		// 	Setting time: 0.825s
-	pid->mLeft.gain.Ki = 500;//256.583282731306; //122.740679932892; 		// 	Overshoot	:	0%
-	pid->mLeft.gain.Kd = 0.0181756509445584;//0.0101865840407575;	//	Gain margin	: 36.7 dB (271%)
+	pid->mLeft.gain.Kp = 4.48920648489184; //7.91171858465162; //4.38148531613524; 		// 	Setting time: 0.825s
+	pid->mLeft.gain.Ki = 176.768621079225; //500;//256.583282731306; //122.740679932892; 		// 	Overshoot	:	0%
+	pid->mLeft.gain.Kd = 0.0343896212668413; //0.0181756509445584;//0.0101865840407575;	//	Gain margin	: 36.7 dB (271%)
 
 	pid->mLeft.part.pPart		= 0;
 	pid->mLeft.part.iPart 		= 0;
@@ -43,9 +43,9 @@ void PID_GainInit(PID_HandleTypeDef *pid)
 	pid->mLeft.part.preDpart 	= 0;
 
 	//MotorRIGHT
-	pid->mRight.gain.Kp = 7.91171858465162;//4.46609358003201;
-	pid->mRight.gain.Ki = 500;//124.506858089363;
-	pid->mRight.gain.Kd = 0.0181756509445584;//0.0103870660870215;	//overshot
+	pid->mRight.gain.Kp = 3.42072165271296;//7.91171858465162;//4.46609358003201;
+	pid->mRight.gain.Ki = 141.511593847985;//500;//124.506858089363;
+	pid->mRight.gain.Kd = 0.0251690597812978;//0.0181756509445584;//0.0103870660870215;	//overshot
 
 	pid->mRight.part.pPart 		= 0;
 	pid->mRight.part.iPart 		= 0;

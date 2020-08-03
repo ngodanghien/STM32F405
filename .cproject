@@ -228,15 +228,15 @@
 									<listOptionValue builtIn="false" value="../Drivers/Driver_AGV/Inc"/>
 									<listOptionValue builtIn="false" value="../Drivers/Driver_IMU/AHRS_Algorithm/MadgwickAHRS"/>
 									<listOptionValue builtIn="false" value="../Drivers/Driver_ROS/Inc"/>
-									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Include"/>
 									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc"/>
-									<listOptionValue builtIn="false" value="../Core/Inc"/>
-									<listOptionValue builtIn="false" value="../Drivers/Driver_IMU"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/STM32F405/Drivers/Driver_ROS/Inc}&quot;"/>
 									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Device/ST/STM32F4xx/Include"/>
+									<listOptionValue builtIn="false" value="/STM32F405/Drivers/Driver_AGV/Inc"/>
 									<listOptionValue builtIn="false" value="../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy"/>
 									<listOptionValue builtIn="false" value="../Drivers/Driver_IMU/AHRS_Algorithm/MahonyAHRS"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/STM32F405/Drivers/Driver_ROS/Inc}&quot;"/>
-									<listOptionValue builtIn="false" value="/STM32F405/Drivers/Driver_AGV/Inc"/>
+									<listOptionValue builtIn="false" value="../Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="../Core/Inc"/>
+									<listOptionValue builtIn="false" value="../Drivers/Driver_IMU"/>
 								</option>
 								<option IS_BUILTIN_EMPTY="false" IS_VALUE_EMPTY="false" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.option.definedsymbols.2099879797" name="Define symbols (-D)" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.cpp.compiler.option.definedsymbols" useByScannerDiscovery="false" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="STM32F405xx"/>

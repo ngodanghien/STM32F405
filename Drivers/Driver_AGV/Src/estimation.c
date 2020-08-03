@@ -34,6 +34,8 @@ extern uint16_t nCountTick1ms;
   * @param  uint16_t stepTimeS, uint8_t inverse
   * @retval void
   */
+int max_pwm_duty 	= 250; 	// -999 to +999
+int time_duty	= 2; 	// seconds
 void Estimation(ROBOT_HandleTypeDef *hRobot)
 {
 	//0. Tính toán PWM dựa vào: PulseGeneratorEstimation
@@ -49,8 +51,9 @@ void Estimation(ROBOT_HandleTypeDef *hRobot)
 
 		// ----Code here (5ms)
 		//pwm = SinGeneratorSignalPWM(1,1);
-		//pwm = PulseGeneratorSignalPWM(800,2);
+		pwm = PulseGeneratorSignalPWM(max_pwm_duty,time_duty);	//900|2
 		//
+		//pwm = max_pwm_duty;
 		ROBOT_GetSpeed(hRobot);
 		ROBOT_SetPWMtoMotor(hRobot, pwm, pwm); //
 		//
@@ -58,16 +61,17 @@ void Estimation(ROBOT_HandleTypeDef *hRobot)
 		parameter[1] = hRobot->Value.wheelLeft.cur_wheel_angular;
 		parameter[2] = hRobot->Value.wheelRight.cur_wheel_angular;
 		//
-		//UartTX_Float(parameter,3);
+		UartTX_Float(parameter,3);
 		//
 		//GPIOB->ODR ^= USER_LED_Pin; //LED = PB13 (Toggle)
 		//using WiFi ..... !!!
+		/*
 		if (++timeSendWiFi >= 10)	//20*5 ==== 100ms = OK [PASSED]
 		{
 			timeSendWiFi = 0;
 			UartTX_Float(parameter,3);
 			GPIOB->ODR ^= USER_LED_Pin; //LED = PB13 (Toggle)
-		}
+		} */
 	}
 }
 /**
