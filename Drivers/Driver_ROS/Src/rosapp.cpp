@@ -86,6 +86,10 @@ void pub_IMU();
 void pub_IMU_rpy();
 
 /* External variables --------------------------------------------------------*/
+extern uint8_t pData[10];
+extern UART_HandleTypeDef huart2;
+
+float dataFloat[2] = {0};
 /* HAL_UART functions --------------------------------------------------------*/
 //[PASSED] : Đã Test với Raspi3B+ ở các tốc độ: 115200; 256000;	OK
 // 512000bps: PC làm việc tốt, Raspi3B+ xử lý ko kịp.
@@ -93,7 +97,14 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
 	nh.getHardware()->flush();
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
-	nh.getHardware()->reset_rbuf();
+	if (huart->Instance==USART1)
+		nh.getHardware()->reset_rbuf();
+	//
+	if(huart->Instance==USART2)
+	{
+		UartRX_Float(dataFloat, pData, 2);
+		HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, 10);
+	}
 }
 
 /* Mains functions ----------------------------------------------------------*/

@@ -19,6 +19,7 @@ void Test_Odom_IMU(ROBOT_HandleTypeDef *hRobot);
 void Test_Run_Robot(ROBOT_HandleTypeDef *hRobot);;
 void Test_Response_Angular_Velocity_Wheel(ROBOT_HandleTypeDef *hRobot);
 void Test_Set_PWM_For_Estimation(ROBOT_HandleTypeDef *hRobot);
+void Test_Get_IMU_Raw_RPY();
 
 /* Private defines -----------------------------------------------------------*/
 

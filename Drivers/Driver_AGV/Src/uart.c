@@ -36,7 +36,29 @@ extern UART_HandleTypeDef huart2;					//UART
  * 3. Tốc độ Rad/s hiện tại (Left + Right)	= 2*4byte(float)
  * ----------------------------------------------------------Sum = 8x3 = 24 bytes
  */
-
+//#define MAX_LEN_RX_FLOAT 	20
+//float result[MAX_LEN_RX_FLOAT] = {0};	//global
+/** [PASSED] [04/08/2020]
+  * @brief  UartTX_Float
+  * @param  float *arrTx, int lengthF
+  * @retval void
+  * ref: https://www.microchip.com/forums/m590535.aspx
+  */
+void UartRX_Float(float *result, uint8_t *buffRx, int lengthF)
+{
+	//0. ex: 0.5f = 0x0000003f (thứ tự lưu trong buffer) = litle-endian = MCU
+	//buffRx[0] = 'S' 83  == header
+	if (buffRx[0] == 'S')
+	{
+		uint8_t *pUint8 = buffRx+1;		//Cộng thêm 1 để trừ header 'S' ra.
+		for (int i=0; i<lengthF;i++)	//số float cần xử lý (ex:2)
+		{
+			result[i] = *(float *)pUint8;	//*(float *)&buffRx;
+			pUint8 += 4;
+		}
+	}
+	return ;
+}
 /**
   * @brief  UartTX_Float
   * @param  float *arrTx, int lengthF

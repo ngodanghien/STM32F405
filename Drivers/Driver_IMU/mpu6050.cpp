@@ -17,6 +17,9 @@
 
 //extern I2C_HandleTypeDef hi2c2;
 extern volatile float q0, q1, q2, q3;	// quaternion of sensor frame relative to auxiliary frame
+extern volatile float yaw_imu;
+
+__IO float yaw_update_fusion = 0.0;	//Lưu lại góc yaw trước đó
 
 float SelfTest[6];
 float gyroBias[3] = {0, 0, 0}, accelBias[3] = {0, 0, 0}; // Bias corrections for gyro and accelerometer
@@ -657,7 +660,7 @@ void IMU_Setup()
 	}
 	//calc bias ...
 	HAL_Delay(100);
-	CalcBias();
+	//CalcBias();	//TODO CalcBias
 }
 // Converts a quaternion orientation to ZYX Euler angles
 void Quaternion2Euler()	//qConj = [q(:,1) -q(:,2) -q(:,3) -q(:,4)]; at: function qConj = quaternConj(q)
@@ -697,6 +700,21 @@ void Quaternion2Euler()	//qConj = [q(:,1) -q(:,2) -q(:,3) -q(:,4)]; at: function
 	pitch	= theta * (180/PI);	//convert to degrees.
 	yaw		= psi	* (180/PI);	//convert to degrees.
 }
+/*
+ * Sau khi Fusion với các thông tin khác, Update lại thông tin yaw cho chính xác.
+ */
+void IMU_Yaw_Update(float newYaw)
+{
+	//[Update]: Calc lại góc Yaw, BUT vẫn phải lưu lại giá trị góc yaw trước đó
+	//0. reset all q
+	q0 = 1;
+	q1 = q2 = q3 = 0;
+	//1. Save yaw old, default yaw_old == 0.0
+	yaw_update_fusion = newYaw;
+	//2. Update
+	yaw = 0;
+	yaw_imu = yaw_update_fusion;
+}
 float Read_IMU()
 {
 	// If data ready bit set, all data registers have new data
@@ -731,20 +749,8 @@ float Read_IMU()
 		//	GPIOB->ODR |= USER_LED_Pin;
 		//	GPIOB->ODR &= ~USER_LED_Pin;
 
-		Quaternion2Euler(); //new code
-
-		//Send Data to Matlab
-		float para[9];
-		para[0] = ax;
-		para[1] = ay;
-		para[2] = az;
-		para[3] = gx;
-		para[4] = gy;
-		para[5] = gz;
-		para[6] = roll;
-		para[7] = pitch;
-		para[8] = yaw;
-		//UartTX_Float(para, 9);//Maltab
+		Quaternion2Euler(); //Calc to RPY
 	}
-	return yaw;
+	//Chú ý: Cộng thêm yaw_old khi reset (update) lại góc yaw mới.
+	return yaw + yaw_update_fusion;
 }

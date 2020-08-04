@@ -24,6 +24,8 @@ static int time_period;
 static int16_t set_pwm_duty = 250; //(-999 to +999)
 /* External variables --------------------------------------------------------*/
 extern float yaw_imu;
+extern float ax, ay, az, gx, gy, gz, pitch, yaw, roll;
+extern volatile float q0, q1, q2, q3;
 /* Private function prototypes -----------------------------------------------*/
 /* Private user code ---------------------------------------------------------*/
 void Test_Odom_IMU(ROBOT_HandleTypeDef *hRobot)
@@ -33,9 +35,9 @@ void Test_Odom_IMU(ROBOT_HandleTypeDef *hRobot)
 	//
 	parameter[2] = hRobot->Odom.odom_pose[0];	//x
 	parameter[3] = hRobot->Odom.odom_pose[1];	//y
-	parameter[4] = hRobot->Odom.odom_pose[2];	//yaw_mcu
-	parameter[5] = yaw_imu;	//yaw_imu
-	UartTX_Float(parameter,6);
+	parameter[4] = hRobot->Odom.odom_pose[2];	//yaw_mcu = rad
+	parameter[5] = yaw_imu*(PI/180);	//convert to rad
+	//UartTX_Float(parameter,6);
 }
 void Test_Run_Robot(ROBOT_HandleTypeDef *hRobot)
 {
@@ -69,4 +71,18 @@ void Test_Set_PWM_For_Estimation(ROBOT_HandleTypeDef *hRobot)
 	//
 	UartTX_Float(parameter,3);
 }
-
+void Test_Get_IMU_Raw_RPY()
+{
+	//Send Data to Matlab
+	parameter[0] = ax;
+	parameter[1] = ay;
+	parameter[2] = az;
+	parameter[3] = gx;
+	parameter[4] = gy;
+	parameter[5] = gz;
+	parameter[6] = roll;
+	parameter[7] = pitch;
+	parameter[8] = yaw;	// độ - degree - 0-360 độ
+	//
+	UartTX_Float(parameter, 9);//Maltab
+}

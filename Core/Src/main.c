@@ -105,6 +105,9 @@ ROBOT_HandleTypeDef robotAGV = {0};
 volatile int16_t nCountTick1ms;
 volatile int16_t nCountTick1msIMU;
 volatile float yaw_imu = 0;
+
+#define Size_pData	10 //'S' + 2*4+CR = 9;
+uint8_t pData[Size_pData] = {0};
 /* USER CODE END 0 */
 
 /**
@@ -160,6 +163,8 @@ int main(void)
   //Enable Time7 = 5ms
   if(HAL_TIM_Base_Start_IT(&htim7) != HAL_OK) Error_Handler();
 
+  //new: Thêm hàm nhận RX cho UART2
+  HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, Size_pData);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -168,22 +173,25 @@ int main(void)
 	{
     /* USER CODE END WHILE */
 
-		/* USER CODE BEGIN 3 */
+    /* USER CODE BEGIN 3 */
 		if (nCountTick1ms >= 5) {	// 5ms == 200 Hz
 			nCountTick1ms = 0; //reset
 			//GPIOB->ODR ^= USER_LED_Pin;
 			//code here --------------
-			//for debug (Lựa chọn 1 trong các mode: TEST__xx__yy() )
+			//for debug (Lựa ch�?n 1 trong các mode: TEST__xx__yy() )
 			//Test_Set_PWM_For_Estimation(&robotAGV);
 			//Test_Response_Angular_Velocity_Wheel(&robotAGV); //10rad/s + 10s
-			Test_Run_Robot(&robotAGV);	//Đặt tốc độ mong muốn (v,w) của robot
+			Test_Run_Robot(&robotAGV);	//�?ặt tốc độ mong muốn (v,w) của robot
 			Test_Odom_IMU(&robotAGV);
+			//HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, Size_pData);
 			//end for debug
 		}
 		//nCountTick1msIMU
 		if (nCountTick1msIMU >= 1) {	// 1ms == 1kHz
 			nCountTick1msIMU = 0; //reset
-			yaw_imu = Read_IMU();	//PASSED = Chính xác 1ms Ready data, thời gian load hết 6*2 bytes = 0.6ms
+			yaw_imu = Read_IMU();	//PASSED = Chính xác 1ms Ready data, th�?i gian load hết 6*2 bytes = 0.6ms
+			//for debug with: Test_Get_IMU_Raw_RPY() to matlab
+			//Test_Get_IMU_Raw_RPY();
 		}
 		//
 		ROS_Loop();
@@ -897,12 +905,12 @@ static void MX_GPIO_Init(void)
 //[TIM-RUN]: 5ms/
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	//Để 2 hàm vào đây vẫn đảm bảo chính xác: 5ms 1 lần.
-	//Luôn đảm bảo chính xác: 5ms khi hàm Main() fọi full các functions.
+	//�?ể 2 hàm vào đây vẫn đảm bảo chính xác: 5ms 1 lần.
+	//Luôn đảm bảo chính xác: 5ms khi hàm Main() f�?i full các functions.
 	GPIOB->ODR ^= USER_LED_Pin;
 	//
 	ROBOT_CONTROL_PID_Run(&robotAGV); //~0.5uS
-	//Đã bao gồm: ROBOT_GetSpeed(&robotAGV); và tính toán v,w cho cả Robot bên trong này.
+	//�?ã bao gồm: ROBOT_GetSpeed(&robotAGV); và tính toán v,w cho cả Robot bên trong này.
 }
 /* USER CODE END 4 */
 

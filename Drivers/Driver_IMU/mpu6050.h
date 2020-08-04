@@ -14,8 +14,8 @@ extern "C" {
 
 
 void IMU_Setup();
-//void Read_IMU();
 float Read_IMU();
+void IMU_Yaw_Update(float newYaw);
 
 #ifdef __cplusplus
 }

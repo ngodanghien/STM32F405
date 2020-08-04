@@ -33,6 +33,8 @@ extern "C" {
 /* Exported functions prototypes ---------------------------------------------*/
 void UartTX_Float(const float *arrTx, int lengthF);
 void UartTX_Double(const double *arrTx, int lengthD);
+
+void UartRX_Float(float *result, uint8_t *buffRx, int lengthF);
 /* Private defines -----------------------------------------------------------*/
 
 /* Initialization and de-initialization functions ----------------------------*/
