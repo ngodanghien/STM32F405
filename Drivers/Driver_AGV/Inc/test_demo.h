@@ -20,6 +20,9 @@ void Test_Run_Robot(ROBOT_HandleTypeDef *hRobot);;
 void Test_Response_Angular_Velocity_Wheel(ROBOT_HandleTypeDef *hRobot);
 void Test_Set_PWM_For_Estimation(ROBOT_HandleTypeDef *hRobot);
 void Test_Get_IMU_Raw_RPY();
+void Test_Robot_Run_OneCircle(ROBOT_HandleTypeDef *hRobot);
+void Test_Robot_Run_Square(ROBOT_HandleTypeDef *hRobot);
+void Test_Robot_Run_Num8(ROBOT_HandleTypeDef *hRobot);
 
 /* Private defines -----------------------------------------------------------*/
 

@@ -86,24 +86,39 @@ void pub_IMU();
 void pub_IMU_rpy();
 
 /* External variables --------------------------------------------------------*/
+#define Size_pData	13
 extern uint8_t pData[10];
 extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart3;
 
-float dataFloat[2] = {0};
+float dataFloat[3] = {0,0,0};	//v_Robot, w_Robot, duphong`
 /* HAL_UART functions --------------------------------------------------------*/
 //[PASSED] : Đã Test với Raspi3B+ ở các tốc độ: 115200; 256000;	OK
 // 512000bps: PC làm việc tốt, Raspi3B+ xử lý ko kịp.
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart){
-	nh.getHardware()->flush();
+	//nh.getHardware()->flush();
 }
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 	if (huart->Instance==USART1)
-		nh.getHardware()->reset_rbuf();
+	{
+		//nh.getHardware()->reset_rbuf();
+		//UartRX_Float(float *result, uint8_t *buffRx, int lengthF)
+		UartRX_Float(dataFloat, pData, 3); //3 float
+		HAL_UART_Receive_DMA(&huart1, (uint8_t *)pData, Size_pData);
+		return;
+	}
 	//
 	if(huart->Instance==USART2)
 	{
-		UartRX_Float(dataFloat, pData, 2);
-		HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, 10);
+		//UartRX_Float(dataFloat, pData, 2);
+		//HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, 10);
+		return;
+	}
+	if(huart->Instance==USART3)
+	{
+		//UartRX_Float(dataFloat, pData, 2);
+		//HAL_UART_Receive_DMA(&huart3, (uint8_t *)pData, 10);
+		return;
 	}
 }
 
@@ -131,16 +146,16 @@ void ROS_Setup(void)
 	}
 	HAL_Delay(10);
 
-	if (nh.advertise(pub_imu))	//ko có TX lên PC
-	{
-		nh.loginfo("[MCU] ROS registration topic: pub_imu -----------------------------OK");	//~6.4ms
-	}
+//	if (nh.advertise(pub_imu))	//ko có TX lên PC
+//	{
+//		nh.loginfo("[MCU] ROS registration topic: pub_imu -----------------------------OK");	//~6.4ms
+//	}
 	HAL_Delay(10);
 
-	if (nh.advertise(pub_imu_rpy))	//ko có TX lên PC
-	{
-		nh.loginfo("[MCU] ROS registration topic: pub_imu_rpy -------------------------OK");	//~6.4ms
-	}
+//	if (nh.advertise(pub_imu_rpy))	//ko có TX lên PC
+//	{
+//		nh.loginfo("[MCU] ROS registration topic: pub_imu_rpy -------------------------OK");	//~6.4ms
+//	}
 	HAL_Delay(10);
 
 	/* Register a new subscriber */
@@ -150,10 +165,10 @@ void ROS_Setup(void)
 	HAL_Delay(100);
 
 	/************  broadcast tf  *************/
-	odom_broadcaster.init(nh);	//bắt buộc phải init trước khi sử dụng
-	HAL_Delay(10);
-		nh.loginfo("[MCU] ROS registration topic: odom_broadcaster(TF)-----------------OK");	//~6.4ms
-	HAL_Delay(10);
+//	odom_broadcaster.init(nh);	//bắt buộc phải init trước khi sử dụng
+//	HAL_Delay(10);
+//		nh.loginfo("[MCU] ROS registration topic: odom_broadcaster(TF)-----------------OK");	//~6.4ms
+//	HAL_Delay(10);
 }
 /**
  * @brief  ROS_Loop : Chỉ dùng để truyền lên PC (Publisher)
@@ -240,7 +255,7 @@ void pub_tf()		// = OK
 	geometry_msgs::TransformStamped odom_trans;
 	odom_trans.header.stamp = nh.now();
 	odom_trans.header.frame_id = "odom";
-	odom_trans.child_frame_id = "base_link";
+	odom_trans.child_frame_id = "base_footprint"; //TODO base_link
 
 	odom_trans.transform.translation.x = x;
 	odom_trans.transform.translation.y = y;
@@ -284,6 +299,7 @@ void pub_IMU_rpy()
  * @param  geometry_msgs::Twist
  * @retval void
  */
+//TODO Check Again wL, wR
 void sub__cmd_vel__callback(const geometry_msgs::Twist &msg)
 {
 	double target_v, target_w;	//vận tốc setpoint của Robot

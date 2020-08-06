@@ -129,7 +129,7 @@ void ROBOT_GetSpeed(ROBOT_HandleTypeDef *hRobot)
   */
 void ROBOT_SetPWMtoMotor(ROBOT_HandleTypeDef *hRobot, int16_t pwmLeft, int16_t pwmRight)
 {
-	static double vL,vR;
+	static double wL,wR, v, w;
 	//check Limit LEFT
 	if (pwmLeft > MAX_PWM) 	pwmLeft = MAX_PWM;
 	else if (pwmLeft < -MAX_PWM) pwmLeft = -MAX_PWM;
@@ -149,10 +149,13 @@ void ROBOT_SetPWMtoMotor(ROBOT_HandleTypeDef *hRobot, int16_t pwmLeft, int16_t p
 	// velocity = (vl+vr)/2		(m/s) ; with v = w*RW
 	// angular	= (vr-vl)/D2W 	(rad/s)
 	//------------------[PASSED] 25/6/2020----------------------
-	vL = hRobot->Value.wheelLeft.cur_wheel_angular*RADIUS_WHEEL; //cur_Speed_Left*RADIUS_WHEEL;
-	vR = hRobot->Value.wheelRight.cur_wheel_angular*RADIUS_WHEEL; //cur_Speed_Right*RADIUS_WHEEL;
-	hRobot->Value.cur_robot_velocity 	= 0.5*( vL + vR);
-	hRobot->Value.cur_robot_angular 	= (vR - vL)/D2WHEEL;
+	wL = hRobot->Value.wheelLeft.cur_wheel_angular;
+	wR = hRobot->Value.wheelRight.cur_wheel_angular;
+	//forwardKinematics
+	v = 0.5*RADIUS_WHEEL*(wL+wR);
+	w = (wR-wL)*RADIUS_WHEEL/D2WHEEL;
+	hRobot->Value.cur_robot_velocity 	= v;
+	hRobot->Value.cur_robot_angular 	= w;
 	//----------------------------------------------------------
 }
 
@@ -201,7 +204,7 @@ void ROBOT_CONTROL_PID_Run(ROBOT_HandleTypeDef *hRobot)
  */
 void ComputeAngularVelocity(ROBOT_HandleTypeDef *hRobot, double target_v, double target_w)	//robotAGV || m/s || rad/s
 {
-	double vl, vr, wr, wl; 	//vận tốc tính toán cho từng bánh xe trái(l), phải (r)
+	double vL, vR, wL, wR; 	//vận tốc tính toán cho từng bánh xe trái(l), phải (r)
 	// Check Limit
 	if 		(target_v > MAX_ROBOT_VELOCITY_UP) 		target_v = MAX_ROBOT_VELOCITY_UP;
 	else if (target_v < MAX_ROBOT_VELOCITY_DOWN)	target_v = MAX_ROBOT_VELOCITY_DOWN;
@@ -211,27 +214,36 @@ void ComputeAngularVelocity(ROBOT_HandleTypeDef *hRobot, double target_v, double
 
 	/* Convert (linear & angular) of Robot to 2 wheel (ms/s) */
 	//1. Chuyển về tốc độ dài (m/s) của 2 bánh xe trái và phải
-	vr = 0.5*(2.0*target_v + target_w*D2WHEEL); //D2W = L = distance 2 wheel
-	vl = 0.5*(2.0*target_v - target_w*D2WHEEL); //D2W = Khoảng cách giữa 2 bánh xe (m)
+	//[wL,wR] = inverseKinematics(v,w)
+	//wL = (v - 0.5*w*D2W))/RW
+	//wR = (v + 0.5*w*D2W))/RW
+//	vL = 0.5*(2.0*target_v - target_w*D2WHEEL); //D2W = Khoảng cách giữa 2 bánh xe (m)
+//	vR = 0.5*(2.0*target_v + target_w*D2WHEEL); //D2W = L = distance 2 wheel
+
 	/* Convert form m/s -> rad/s */
 	//2. Chuyển từ tốc độ m/s của bánh xe về tốc độ góc (rad/s)
 
-	wl = vl/RADIUS_WHEEL;		//WHEEL_RADIUS: Bán kính bánh xe (m)
-	wr = vr/RADIUS_WHEEL; 		//RW: robot wheel radius
+//	wL = vL/RADIUS_WHEEL;		//WHEEL_RADIUS: Bán kính bánh xe (m)
+//	wR = vR/RADIUS_WHEEL; 		//RW: robot wheel radius
 
+	wL = (target_v - 0.5*target_w*D2WHEEL)/RADIUS_WHEEL;
+	wR = (target_v + 0.5*target_w*D2WHEEL)/RADIUS_WHEEL;
+
+	vL = 	wL*RADIUS_WHEEL;
+	vR = 	wR*RADIUS_WHEEL;
 	//3. Giới hạn cơ khí của bánh xe (Tốc độ quay maximum)
-	if 		(wl > MAX_RADs_LEFT_UP) 		wl = MAX_RADs_LEFT_UP;
-	else if (wl < MAX_RADs_LEFT_DOWN) 		wl = MAX_RADs_LEFT_DOWN;
+	if 		(wL > MAX_RADs_LEFT_UP) 		wL = MAX_RADs_LEFT_UP;
+	else if (wL < MAX_RADs_LEFT_DOWN) 		wL = MAX_RADs_LEFT_DOWN;
 	//
-	if 		(wr > MAX_RADs_RIGHT_UP) 		wr = MAX_RADs_RIGHT_UP;
-	else if (wr < MAX_RADs_RIGHT_DOWN) 		wr = MAX_RADs_RIGHT_DOWN;
+	if 		(wR > MAX_RADs_RIGHT_UP) 		wR = MAX_RADs_RIGHT_UP;
+	else if (wR < MAX_RADs_RIGHT_DOWN) 		wR = MAX_RADs_RIGHT_DOWN;
 	//4. Cập nhập các giá trị vl,wr đến robot trước khi thực hiện bộ điều khiển PID, STR, Fuzzy ....
 	hRobot->Value.set_robot_velocity 	= target_v;	//view
 	hRobot->Value.set_robot_angular		= target_w;	//view
-	hRobot->Value.wheelLeft.set_wheel_velocity	= vl;
-	hRobot->Value.wheelRight.set_wheel_velocity	= vl;
-	hRobot->Value.wheelLeft.set_wheel_angular 	= wl;	//control wheel (rad/s)
-	hRobot->Value.wheelRight.set_wheel_angular 	= wr;	//control
+	hRobot->Value.wheelLeft.set_wheel_velocity	= vL;
+	hRobot->Value.wheelRight.set_wheel_velocity	= vR;
+	hRobot->Value.wheelLeft.set_wheel_angular 	= wL;	//control wheel (rad/s)
+	hRobot->Value.wheelRight.set_wheel_angular 	= wR;	//control
 	//5. Thực hiện bộ điều khiển !
 }
 /******************* (C) COPYRIGHT 2020 hiennd *****END OF FILE****/

@@ -26,7 +26,8 @@ float txBuffFload[10];	//bat buoc phai dung global.
 double txBuffDouble[10];
 /* Private function prototypes -----------------------------------------------*/
 /* External variables --------------------------------------------------------*/
-extern UART_HandleTypeDef huart2;					//UART
+extern UART_HandleTypeDef huart1;					//UART1
+extern UART_HandleTypeDef huart2;					//UART2
 
 /* Exported functions --------------------------------------------------------*/
 
@@ -45,6 +46,17 @@ extern UART_HandleTypeDef huart2;					//UART
   * ref: https://www.microchip.com/forums/m590535.aspx
   */
 void UartRX_Float(float *result, uint8_t *buffRx, int lengthF)
+{
+	//0. ex: 0.5f = 0x0000003f (thứ tự lưu trong buffer) = litle-endian = MCU
+	uint8_t *pUint8 = buffRx;
+	for (int i=0; i<lengthF;i++)	//số float cần xử lý (ex:2)
+	{
+		result[i] = *(float *)pUint8;	//*(float *)&buffRx;
+		pUint8 += 4;
+	}
+	return ;
+}
+void UartRX_aFloat(float *result, uint8_t *buffRx, int lengthF)	//add header
 {
 	//0. ex: 0.5f = 0x0000003f (thứ tự lưu trong buffer) = litle-endian = MCU
 	//buffRx[0] = 'S' 83  == header
@@ -74,8 +86,28 @@ void UartTX_Float(const float *arrTx, int lengthF)
 	*((uint32_t*)txBuffFload + lengthF) = 0x00000A0D;
 	//3. Send Tx buffer
 	//HAL_UART_DMAStop(_huart);
-	//HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txBuffFload,length);	//OK = UART
-	HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txBuffFload,length-1); //end = '\r'
+	//HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txBuffFload,length);	//OK = UART "\r\n"
+	//HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txBuffFload,length-1); //end = '\r'
+	HAL_UART_Transmit_DMA(&huart1,(uint8_t*)txBuffFload,length-1);
+}
+//[PASSED] OK on Matlab with Host Serial Transmit
+void UartTX_Float_aHeader(const float *arrTx, int lengthF)
+{
+	//0. Convert length Float -> length Byte + 2 byte "\r\n"
+	int length = lengthF*4 + 2;	//sử dụng 01 byte '\r' + 01 byte header
+	//1. copy float *arrTx to txbuff
+	for (int i=0;i<lengthF;i++) txBuffFload[i] = arrTx[i]; //Dư 01 float (4byte) để lưu "\r\n"
+	//2.Add "\r\n" into terminal.
+	*((uint32_t*)txBuffFload + lengthF) = 0x00000A0D;
+	//Thêm Header vào đây trước khi truyền.
+	static uint8_t txbuffU8 [10*4] = {0};
+	txbuffU8[0] = 0x53; //(uint8_t)'S';	//ASCII = 'S' = header = 0x53 = 83
+	for (int j=1; j<(lengthF+1)*4; j++)
+	{
+		txbuffU8[j] = *((uint8_t*)txBuffFload + (j-1));
+	}
+	//3. Send Tx buffer
+	HAL_UART_Transmit_DMA(&huart2,(uint8_t*)txbuffU8,length); //end = '\r'
 }
 /**
   * @brief  UartTX_Double

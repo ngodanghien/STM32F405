@@ -36,6 +36,7 @@ extern uint16_t nCountTick1ms;
   */
 int max_pwm_duty 	= 250; 	// -999 to +999
 int time_duty	= 2; 	// seconds
+//Estimation(&robotAGV); -> (hàm thay thế):  Test_Set_PWM_For_Estimation(&robotAGV);
 void Estimation(ROBOT_HandleTypeDef *hRobot)
 {
 	//0. Tính toán PWM dựa vào: PulseGeneratorEstimation

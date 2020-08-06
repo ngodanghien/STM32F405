@@ -72,6 +72,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart1_rx;
 DMA_HandleTypeDef hdma_usart2_tx;
 DMA_HandleTypeDef hdma_usart2_rx;
+DMA_HandleTypeDef hdma_usart3_rx;
 
 /* USER CODE BEGIN PV */
 
@@ -106,7 +107,7 @@ volatile int16_t nCountTick1ms;
 volatile int16_t nCountTick1msIMU;
 volatile float yaw_imu = 0;
 
-#define Size_pData	10 //'S' + 2*4+CR = 9;
+#define Size_pData	13 // 3*4+CR = 13;
 uint8_t pData[Size_pData] = {0};
 /* USER CODE END 0 */
 
@@ -158,13 +159,15 @@ int main(void)
 	  Error_DriverHandler();
   ROBOT_CONTROL_PID_Init(&robotAGV);
   //-----For ROS Init ---------------------
-  ROS_Setup();
+  //ROS_Setup();
   IMU_Setup();
   //Enable Time7 = 5ms
   if(HAL_TIM_Base_Start_IT(&htim7) != HAL_OK) Error_Handler();
 
   //new: Thêm hàm nhận RX cho UART2
-  HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, Size_pData);
+  HAL_UART_Receive_DMA(&huart1, (uint8_t *)pData, Size_pData);
+  //HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, Size_pData);
+  //HAL_UART_Receive_DMA(&huart3, (uint8_t *)pData, Size_pData);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -181,21 +184,21 @@ int main(void)
 			//for debug (Lựa ch�?n 1 trong các mode: TEST__xx__yy() )
 			//Test_Set_PWM_For_Estimation(&robotAGV);
 			//Test_Response_Angular_Velocity_Wheel(&robotAGV); //10rad/s + 10s
-			Test_Run_Robot(&robotAGV);	//�?ặt tốc độ mong muốn (v,w) của robot
+			Test_Run_Robot(&robotAGV);	//Dặt tốc độ mong muốn (v,w) của robot <=>sub__cmd_vel__callback
 			Test_Odom_IMU(&robotAGV);
 			//HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, Size_pData);
 			//end for debug
 		}
-		//nCountTick1msIMU
 		if (nCountTick1msIMU >= 1) {	// 1ms == 1kHz
 			nCountTick1msIMU = 0; //reset
-			yaw_imu = Read_IMU();	//PASSED = Chính xác 1ms Ready data, th�?i gian load hết 6*2 bytes = 0.6ms
+			yaw_imu = Read_IMU();	//PASSED = Chính xác 1ms Ready data, Time load hết 6*2 bytes = 0.6ms
 			//for debug with: Test_Get_IMU_Raw_RPY() to matlab
 			//Test_Get_IMU_Raw_RPY();
 		}
-		//
-		ROS_Loop();
-		//Estimation(&robotAGV); -> (hàm thay thế):  Test_Set_PWM_For_Estimation(&robotAGV);
+		//Test_Robot_Run_OneCircle(&robotAGV); //PASSED
+		//Test_Robot_Run_Square(&robotAGV);	   //PASSED
+		//Test_Robot_Run_Num8(&robotAGV);
+		//ROS_Loop();
 	}
   /* USER CODE END 3 */
 }
@@ -769,7 +772,7 @@ static void MX_USART3_UART_Init(void)
 
   /* USER CODE END USART3_Init 1 */
   huart3.Instance = USART3;
-  huart3.Init.BaudRate = 115200;
+  huart3.Init.BaudRate = 256000;
   huart3.Init.WordLength = UART_WORDLENGTH_8B;
   huart3.Init.StopBits = UART_STOPBITS_1;
   huart3.Init.Parity = UART_PARITY_NONE;
@@ -797,6 +800,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
   /* DMA1_Stream2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Stream2_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA1_Stream2_IRQn);
@@ -903,14 +909,12 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 //[TIM-RUN]: 5ms/
+// Luon cho chay, de dam bao ko xay ra su co gi cho he dieu khien.
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-	//�?ể 2 hàm vào đây vẫn đảm bảo chính xác: 5ms 1 lần.
-	//Luôn đảm bảo chính xác: 5ms khi hàm Main() f�?i full các functions.
-	GPIOB->ODR ^= USER_LED_Pin;
+	//GPIOB->ODR ^= USER_LED_Pin;
 	//
-	ROBOT_CONTROL_PID_Run(&robotAGV); //~0.5uS
-	//�?ã bao gồm: ROBOT_GetSpeed(&robotAGV); và tính toán v,w cho cả Robot bên trong này.
+	ROBOT_CONTROL_PID_Run(&robotAGV); //~0.5uS}
 }
 /* USER CODE END 4 */
 
@@ -925,7 +929,7 @@ void Error_Handler(void)
 	while(1)
 	{
 		GPIOB->ODR ^= USER_LED_Pin;
-		delay_ms(500);
+		HAL_Delay(500);
 	}
   /* USER CODE END Error_Handler_Debug */
 }

@@ -204,7 +204,7 @@ void MadgwickAHRSupdateIMU(float gx, float gy, float gz, float ax, float ay, flo
 	q2 += qDot3 * (1.0f / sampleFreq);
 	q3 += qDot4 * (1.0f / sampleFreq);
 
-	// Normalise quaternion
+	// Normalise Quaternion
 	recipNorm = invSqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
 	q0 *= recipNorm;
 	q1 *= recipNorm;
