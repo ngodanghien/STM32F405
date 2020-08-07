@@ -109,6 +109,8 @@ volatile float yaw_imu = 0;
 
 #define Size_pData	13 // 3*4+CR = 13;
 uint8_t pData[Size_pData] = {0};
+extern float dataFloat[3];
+__IO uint16_t timeout = 0; //chờ lâu quá ko có lệnh điều khiển gửi xuống thì dừng xe
 /* USER CODE END 0 */
 
 /**
@@ -164,7 +166,7 @@ int main(void)
   //Enable Time7 = 5ms
   if(HAL_TIM_Base_Start_IT(&htim7) != HAL_OK) Error_Handler();
 
-  //new: Thêm hàm nhận RX cho UART2
+  //Thêm hàm nhận RX cho UARTx
   HAL_UART_Receive_DMA(&huart1, (uint8_t *)pData, Size_pData);
   //HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, Size_pData);
   //HAL_UART_Receive_DMA(&huart3, (uint8_t *)pData, Size_pData);
@@ -177,28 +179,42 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+		static int nRunning = 0;
 		if (nCountTick1ms >= 5) {	// 5ms == 200 Hz
 			nCountTick1ms = 0; //reset
 			//GPIOB->ODR ^= USER_LED_Pin;
 			//code here --------------
-			//for debug (Lựa ch�?n 1 trong các mode: TEST__xx__yy() )
-			//Test_Set_PWM_For_Estimation(&robotAGV);
-			//Test_Response_Angular_Velocity_Wheel(&robotAGV); //10rad/s + 10s
 			Test_Run_Robot(&robotAGV);	//Dặt tốc độ mong muốn (v,w) của robot <=>sub__cmd_vel__callback
 			Test_Odom_IMU(&robotAGV);
-			//HAL_UART_Receive_DMA(&huart2, (uint8_t *)pData, Size_pData);
-			//end for debug
+			//After 5 seconds not have data RX, then Robot STOP !!!
+			timeout++;
+			if (timeout >= 1000) // ~1000*5 = 2000ms = 5 seconds
+			{
+				timeout = 0; //reset
+				dataFloat[0] = 0.0;
+				dataFloat[1] = 0.0;
+				// <==> ComputeAngularVelocity(&robotAGV,0.0,0.0)
+				//reset
+				HAL_UART_Receive_DMA(&huart1, (uint8_t *)pData, Size_pData);
+			}
+			// Nhan biet he thong dang chay
+			nRunning++;
+			if (nRunning >= 200) // ~200*5 = 1 giay
+			{
+				nRunning = 0; //reset
+				GPIOB->ODR ^= USER_LED_Pin;
+			}
 		}
 		if (nCountTick1msIMU >= 1) {	// 1ms == 1kHz
 			nCountTick1msIMU = 0; //reset
 			yaw_imu = Read_IMU();	//PASSED = Chính xác 1ms Ready data, Time load hết 6*2 bytes = 0.6ms
-			//for debug with: Test_Get_IMU_Raw_RPY() to matlab
-			//Test_Get_IMU_Raw_RPY();
 		}
-		//Test_Robot_Run_OneCircle(&robotAGV); //PASSED
-		//Test_Robot_Run_Square(&robotAGV);	   //PASSED
-		//Test_Robot_Run_Num8(&robotAGV);
+		//Test_Set_PWM_For_Estimation(&robotAGV);
+		//Test_Robot_Run_OneCircle(&robotAGV); 	//PASSED
+		//Test_Robot_Run_Square(&robotAGV);	   	//PASSED
+		//Test_Robot_Run_Num8(&robotAGV);		//PASSED
 		//ROS_Loop();
+		//Test_Get_IMU_Raw_RPY(); Test_Get_IMU_Raw_RPY() to matlab
 	}
   /* USER CODE END 3 */
 }

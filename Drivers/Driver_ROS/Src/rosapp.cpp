@@ -90,7 +90,8 @@ void pub_IMU_rpy();
 extern uint8_t pData[10];
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
-
+extern uint16_t timeout;
+//
 float dataFloat[3] = {0,0,0};	//v_Robot, w_Robot, duphong`
 /* HAL_UART functions --------------------------------------------------------*/
 //[PASSED] : Đã Test với Raspi3B+ ở các tốc độ: 115200; 256000;	OK
@@ -105,6 +106,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
 		//UartRX_Float(float *result, uint8_t *buffRx, int lengthF)
 		UartRX_Float(dataFloat, pData, 3); //3 float
 		HAL_UART_Receive_DMA(&huart1, (uint8_t *)pData, Size_pData);
+		// Bao nhan dc Data RX (nhay lien tuc)
+		GPIOB->ODR ^= USER_LED_Pin;
+		//reset timeout
+		timeout = 0;
 		return;
 	}
 	//

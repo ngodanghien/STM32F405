@@ -619,13 +619,14 @@ uint8_t ReadIMU()
 void CalcBias()
 {
 	uint32_t nCount = 0;
+	int binkLed = 0;
 	//
 	while(nCount < SAMPLE_COUNT)
 	{
 		if (ReadIMU())	//==0.98425ms cho 1 lần đọc (gửi đến 3 lần, nhận 1)
 		{
+			binkLed++;
 			nCount++;
-			GPIOB->ODR ^= USER_LED_Pin;
 			//
 			bias_accel[0] += ax;
 			bias_accel[1] += ay;
@@ -634,6 +635,12 @@ void CalcBias()
 			bias_gyro[0] += gx;
 			bias_gyro[1] += gy;
 			bias_gyro[2] += gz;
+		}
+		//ToogleLED
+		if (binkLed >= 300)
+		{
+			binkLed = 0;
+			GPIOB->ODR ^= USER_LED_Pin;
 		}
 	}
 	//
@@ -660,7 +667,13 @@ void IMU_Setup()
 	}
 	//calc bias ...
 	HAL_Delay(100);
-	//CalcBias();	//TODO CalcBias
+	CalcBias();	//TODO CalcBias
+	//Finish Calib
+	for (int i=0; i<10; i++)
+	{
+		GPIOB->ODR ^= USER_LED_Pin;
+		HAL_Delay(100);
+	}
 }
 // Converts a quaternion orientation to ZYX Euler angles
 void Quaternion2Euler()	//qConj = [q(:,1) -q(:,2) -q(:,3) -q(:,4)]; at: function qConj = quaternConj(q)
